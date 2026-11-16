@@ -12,26 +12,96 @@
   --color-nebula-lavender: #cdbdff;
   --color-nebula-pink: #ff9fd6;
   --color-nebula-teal: #5eead4;
+  --color-nebula-sky: #8ec5ff;
   --color-star-gold: #ffd9a0;
 }
 
-html,
-body,
-#root {
-  height: 100%;
+html {
+  background: var(--color-void);
 }
 
 body {
   margin: 0;
-  /* Phase 1 is a single full-screen canvas. Phase 2 turns scrolling on. */
-  overflow: hidden;
+  /* `clip` stops sideways scrolling without breaking `position: sticky` (which `hidden` would). */
+  overflow-x: clip;
   background: var(--color-void);
   color: #fff;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Debug slider ─────────────────────────────────────────────────────────── */
+/* ── Section text ─────────────────────────────────────────────────────────── */
+
+/* A soft dark cloud behind a block of text, so it stays readable over bright particles. */
+.scrim {
+  position: relative;
+  isolation: isolate;
+}
+
+.scrim::before {
+  content: '';
+  position: absolute;
+  inset: -3.5rem -4.5rem;
+  z-index: -1;
+  /* Near-neutral, so it works over every background grade (violet, teal, gold). */
+  background: radial-gradient(
+    closest-side,
+    rgb(2 2 6 / 0.72),
+    rgb(2 2 6 / 0.45) 60%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* Sections let the mouse through to the canvas (see SectionShell). Links opt
+   back in — but only while their section is the one on screen, so nobody can
+   click a link that has faded out. */
+.interactive {
+  pointer-events: none;
+}
+
+section[data-active='true'] .interactive {
+  pointer-events: auto;
+}
+
+.interactive:focus-visible {
+  outline: 1px solid rgb(255 255 255 / 0.7);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+
+.glow-link {
+  text-shadow: 0 0 22px rgb(255 204 133 / 0.55);
+}
+
+/* The little line under "Scroll to begin", sliding downward on a loop. */
+.scroll-cue {
+  transform-origin: top;
+  animation: scroll-cue 2.4s ease-in-out infinite;
+}
+
+@keyframes scroll-cue {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  35% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(1.25rem) scaleY(0.2);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue {
+    animation: none;
+  }
+}
+
+/* ── Debug slider (shown with ?debug) ─────────────────────────────────────── */
 .stardust-range {
   -webkit-appearance: none;
   appearance: none;
@@ -49,7 +119,8 @@ body {
     90deg,
     var(--color-nebula-lavender),
     var(--color-nebula-pink),
-    var(--color-nebula-teal)
+    var(--color-nebula-teal),
+    var(--color-star-gold)
   );
 }
 
@@ -60,16 +131,17 @@ body {
     90deg,
     var(--color-nebula-lavender),
     var(--color-nebula-pink),
-    var(--color-nebula-teal)
+    var(--color-nebula-teal),
+    var(--color-star-gold)
   );
 }
 
 .stardust-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 15px;
-  height: 15px;
-  margin-top: -6px; /* centre the thumb on the 3px track */
+  width: 13px;
+  height: 13px;
+  margin-top: -5px; /* centre the thumb on the 3px track */
   border: 0;
   border-radius: 50%;
   background: #fff;
@@ -79,8 +151,8 @@ body {
 }
 
 .stardust-range::-moz-range-thumb {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   border: 0;
   border-radius: 50%;
   background: #fff;

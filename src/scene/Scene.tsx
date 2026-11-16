@@ -1,7 +1,10 @@
 import { Canvas } from '@react-three/fiber'
+import { IntroSequence } from '../journey/useJourney'
+import { Backdrop } from './Backdrop'
+import { CameraRig } from './CameraRig'
 import { CAMERA, PALETTE } from './config'
-import { DebugCamera } from './DebugCamera'
 import { ParticleSystem } from './ParticleSystem'
+import { PointerTracker } from './pointer'
 
 /** The WebGL canvas and everything drawn inside it. */
 export function Scene() {
@@ -14,8 +17,11 @@ export function Scene() {
       gl={{ antialias: false, powerPreference: 'high-performance' }}
     >
       <color attach="background" args={[PALETTE.void]} />
+      <PointerTracker />
+      <CameraRig />
+      <Backdrop />
       <ParticleSystem />
-      <DebugCamera />
+      <IntroSequence />
     </Canvas>
   )
 }

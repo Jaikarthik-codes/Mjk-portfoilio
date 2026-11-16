@@ -6,9 +6,10 @@
 //
 //  The big idea — morphing without touching JavaScript:
 //    Every particle carries its position in EVERY shape at the same time, as
-//    separate attributes (position = name, aNebula, aGalaxy). JavaScript only
-//    sends one number per frame, uProgress, and this shader blends between the
-//    stored positions. 50,000 particles move and the CPU does almost nothing.
+//    separate attributes (position = name, aNebula, aConstellation, aGalaxy,
+//    aBurst). JavaScript only sends one number per frame, uProgress, and this
+//    shader blends between the stored positions. 50,000 particles move and the
+//    CPU does almost nothing.
 //
 //  (noise.glsl is pasted above this file, which is where snoise() and flow()
 //  come from. three.js also adds a few declarations for us automatically:
@@ -20,37 +21,48 @@
 // Indices into the per-shape arrays below. Must match SHAPES in scene/config.ts.
 #define NAME 0
 #define NEBULA 1
-#define GALAXY 2
-#define SHAPE_COUNT 3
+#define CONSTELLATION 2
+#define GALAXY 3
+#define BURST 4
+#define SHAPE_COUNT 5
 
 // ── Uniforms: values that are the same for every particle this frame ─────────
-uniform float uTime;                      // seconds since the scene started
-uniform float uProgress;                  // 0 = name, 1 = nebula, 2 = galaxy; 0.5 = halfway to nebula
-uniform float uShapeSize[SHAPE_COUNT];    // particle diameter in world units, per shape
-uniform float uShapeAlpha[SHAPE_COUNT];   // particle opacity, per shape
-uniform float uStagger;                   // 0..1 — how spread out the particles' start times are
-uniform float uTurbulence;                // how far particles get blown off course mid-flight
-uniform float uSwirl;                     // how much the whole cloud twists mid-flight (radians)
-uniform float uTwinkle;                   // 0..1 — strength of the brightness flicker
-uniform float uNameWidth;                 // width of the name, to normalise the dissolve sweep
+uniform float uTime;                          // seconds since the scene started
+uniform float uProgress;                      // 0 name · 1 nebula · 2 constellations · 3 galaxy · 4 burst
+                                              //   (2.5 = halfway from constellations to galaxy)
+uniform float uIntro;                         // the opening Big Bang, 0 → 1. Stays at 1 afterwards.
+uniform float uShapeSize[SHAPE_COUNT];        // particle diameter in world units, per shape
+uniform float uShapeAlpha[SHAPE_COUNT];       // particle opacity, per shape
+uniform float uShapeDrift[SHAPE_COUNT];       // how far particles wander while a shape is at rest
+uniform float uShapeDriftScale[SHAPE_COUNT];  // size of that wander's swirls (small number = big swirls)
+uniform float uStagger;                       // 0..1 — how spread out the particles' start times are
+uniform float uTurbulence;                    // how far particles get blown off course mid-flight
+uniform float uSwirl;                         // how much the whole cloud twists mid-flight (radians)
+uniform float uTwinkle;                       // 0..1 — strength of the brightness flicker
+uniform float uNameWidth;                     // width of the name, to normalise its dissolve sweep
+uniform float uFieldWidth;                    // width of the constellation field, for the same reason
 uniform float uGalaxyRadius;
-uniform vec2  uGalaxyTilt;                // x = lean toward the camera, y = roll (radians)
-uniform float uPixelHeight;               // height of the canvas in real device pixels
-uniform float uMinPointSize;              // smallest point we allow, in device pixels
-uniform float uAspect;                    // canvas width / height
-uniform vec2  uPointer;                   // cursor position, -1..1 on both axes (0,0 = screen centre)
-uniform float uPointerStrength;           // how hard the cursor pushes; 0 turns it off
-uniform float uPointerRadius;             // reach of the cursor push (1.0 = half the screen height)
+uniform vec2  uGalaxyTilt;                    // x = lean toward the camera, y = roll (radians)
+uniform float uPixelHeight;                   // height of the canvas in real device pixels
+uniform float uMinPointSize;                  // smallest point we allow, in device pixels
+uniform float uAspect;                        // canvas width / height
+uniform vec2  uPointer;                       // cursor position, -1..1 on both axes (0,0 = screen centre)
+uniform float uPointerStrength;               // how hard the cursor pushes; 0 turns it off
+uniform float uPointerRadius;                 // reach of the cursor push (1.0 = half the screen height)
 
 // ── Attributes: values that are different for every particle ─────────────────
 // `position` (declared by three.js) holds the particle's place in the NAME shape.
-attribute vec3 aNebula;        // … its place in the nebula
-attribute vec3 aGalaxy;        // … its place in the galaxy (flat, before spin and tilt)
-attribute vec3 aColorName;     // its colour in each shape
+attribute vec3 aNebula;             // … its place in the nebula
+attribute vec3 aConstellation;      // … in the constellations
+attribute vec3 aGalaxy;             // … in the galaxy (flat, before spin and tilt)
+attribute vec3 aBurst;              // … in the supernova burst
+attribute vec3 aColorName;          // its colour in each shape
 attribute vec3 aColorNebula;
+attribute vec3 aColorConstellation;
 attribute vec3 aColorGalaxy;
-attribute vec4 aRandom;        // four random numbers 0..1, fixed for the particle's whole life:
-                               //   x = delay   y = size   z = twinkle rhythm   w = spare dice roll
+attribute vec3 aColorBurst;
+attribute vec4 aRandom;             // four random numbers 0..1, fixed for the particle's whole life:
+                                    //   x = delay   y = size   z = twinkle rhythm   w = spare dice roll
 
 // ── Varyings: values passed on to the fragment shader ────────────────────────
 varying vec3 vColor;
@@ -63,9 +75,15 @@ mat2 rotate(float angle) {
   return mat2(c, s, -s, c);
 }
 
-// How far this particle is through one morph, 0..1.
-//   t     — progress of the whole morph, 0..1
-//   delay — 0..1, how late this particle sets off
+// "Smootherstep" easing: start gently, speed up, land gently. x and result are 0..1.
+float ease(float x) {
+  return x * x * x * (x * (x * 6.0 - 15.0) + 10.0);
+}
+
+// How far this particle is through one morph, 0..1 (not yet eased).
+//   t       — progress of the whole morph, 0..1
+//   delay   — 0..1, how late this particle sets off
+//   stagger — 0..1, how much of the morph is spent on staggered take-offs
 //
 // If every particle used `t` directly they would all leave and arrive in
 // lockstep — a stiff, linear slide. Instead each particle travels during its
@@ -76,48 +94,84 @@ mat2 rotate(float angle) {
 //   delay = 0.5           [ travels ]
 //   delay = 1                      [ travels ]
 //
-// Because the windows always fit inside 0..1, dragging uProgress backwards
-// plays the exact same motion in reverse.
-float morphProgress(float t, float delay) {
+// Because the windows always fit inside 0..1, scrolling backwards plays the
+// exact same motion in reverse.
+float travel(float t, float delay, float stagger) {
   t = clamp(t, 0.0, 1.0);
-  float window = 1.0 - uStagger;                               // length of each particle's trip
-  float local = clamp((t - delay * uStagger) / window, 0.0, 1.0);
-  // "Smootherstep" easing: start gently, speed up, land gently.
-  return local * local * local * (local * (local * 6.0 - 15.0) + 10.0);
+  float window = 1.0 - stagger;                         // length of each particle's trip
+  return clamp((t - delay * stagger) / window, 0.0, 1.0);
 }
 
-// Blend one value per shape using the particle's morph progress.
-// `t.x` is the name→nebula progress, `t.y` is nebula→galaxy.
-float blendShapes(float name, float nebula, float galaxy, vec2 t) {
-  return mix(mix(name, nebula, t.x), galaxy, t.y);
+// Blend one value per shape. `w` holds the particle's progress through each of
+// the four morphs, in order:
+//   w.x name → nebula                 w.y nebula → constellations
+//   w.z constellations → galaxy       w.w galaxy → burst
+// Each mix() replaces the running result with the next shape as its weight
+// goes 0 → 1, so at any moment only two neighbouring shapes are really mixed.
+float blendShapes(float values[SHAPE_COUNT], vec4 w) {
+  float result = mix(values[NAME], values[NEBULA], w.x);
+  result = mix(result, values[CONSTELLATION], w.y);
+  result = mix(result, values[GALAXY], w.z);
+  return mix(result, values[BURST], w.w);
 }
-vec3 blendShapes(vec3 name, vec3 nebula, vec3 galaxy, vec2 t) {
-  return mix(mix(name, nebula, t.x), galaxy, t.y);
+vec3 blendShapes(vec3 name, vec3 nebula, vec3 constellation, vec3 galaxy, vec3 burst, vec4 w) {
+  vec3 result = mix(name, nebula, w.x);
+  result = mix(result, constellation, w.y);
+  result = mix(result, galaxy, w.z);
+  return mix(result, burst, w.w);
 }
 
-// ── Idle motion ──────────────────────────────────────────────────────────────
+// ── Resting motion ───────────────────────────────────────────────────────────
 // Each shape keeps moving while it is "at rest", so nothing ever looks frozen.
+// These are the big, rigid movements; the fine wandering is added in main().
 
-// Name: a barely-there shimmer. Any more and the letters stop being readable.
-vec3 idleName(vec3 p) {
-  return p + flow(p * 0.9 + uTime * 0.12) * 0.028;
+// Name: this is also where the opening Big Bang happens.
+//   uIntro 0.00 → 0.14   every particle sits at the centre: one glowing point
+//          0.14 → 0.40   they are flung outward
+//          0.34 → 1.00   they spiral back in and settle into the letters
+vec3 restName(vec3 home) {
+  if (uIntro >= 1.0) return home;                       // intro finished: nothing to do
+
+  // Explosion. pow(…, 4.0) is an "ease-out": violent at first, then coasting.
+  float launch = clamp((uIntro - 0.14 - 0.05 * aRandom.x) / 0.24, 0.0, 1.0);
+  launch = 1.0 - pow(1.0 - launch, 4.0);
+
+  // Where this particle gets flung to: its place in the burst shape, pushed
+  // nearer or further at random, plus some depth so a few rush past the camera.
+  vec3 flung = aBurst * (0.45 + 1.2 * aRandom.w);
+  flung.z += (aRandom.z - 0.5) * 9.0;
+
+  // Gathering, staggered per particle like any other morph.
+  float gather = ease(travel((uIntro - 0.34) / 0.66, aRandom.z, 0.5));
+
+  vec3 p = mix(flung * launch, home, gather);
+  // Spin the cloud as it expands, and unwind the spin as it gathers:
+  // particles spiral out, then spiral home.
+  p.xy = rotate((1.0 - gather) * launch * 2.2) * p.xy;
+  return p;
 }
 
-// Nebula: a slow turn, a gentle twist that breathes in and out, and drifting gas.
-vec3 idleNebula(vec3 p) {
+// Nebula: a slow turn plus a gentle twist that breathes in and out.
+vec3 restNebula(vec3 p) {
   float radius = length(p.xy);
   float angle = uTime * 0.02 + 0.16 * sin(uTime * 0.07 - radius * 0.35);
   p.xy = rotate(angle) * p.xy;
-  p += flow(p * 0.16 + vec3(0.0, 0.0, uTime * 0.035)) * 0.42;
   return p;
 }
 
 // Galaxy: spin around its own axis first, then tilt the whole disc.
 // (Order matters: tilting first would make it wobble like a dropped coin.)
-vec3 idleGalaxy(vec3 p) {
+vec3 restGalaxy(vec3 p) {
   p.xz = rotate(uTime * 0.05) * p.xz;     // spin
   p.yz = rotate(uGalaxyTilt.x) * p.yz;    // lean toward the camera
   p.xy = rotate(uGalaxyTilt.y) * p.xy;    // roll
+  return p;
+}
+
+// Burst: turns slowly while a ripple travels outward through it.
+vec3 restBurst(vec3 p) {
+  p.xy = rotate(uTime * 0.02) * p.xy;
+  p *= 1.0 + 0.03 * sin(uTime * 0.7 - length(p.xy) * 0.9);
   return p;
 }
 
@@ -127,35 +181,56 @@ void main() {
   // delay is part random (aRandom.x) and part a pattern we choose per morph.
 
   // Name → nebula: sweep left to right, as if a breeze blows the letters away.
-  float sweep = clamp(position.x / uNameWidth + 0.5, 0.0, 1.0);
-  float delayToNebula = mix(aRandom.x, sweep, 0.5);
-
-  // Nebula → galaxy: the core forms first and the arms grow outward from it.
+  float nameSweep = clamp(position.x / uNameWidth + 0.5, 0.0, 1.0);
+  // Nebula → constellations: the figures form one after another across the sky.
+  float skySweep = clamp(aConstellation.x / uFieldWidth + 0.5, 0.0, 1.0);
+  // Constellations → galaxy: the core forms first and the arms grow outward.
   float fromCore = clamp(length(aGalaxy) / uGalaxyRadius, 0.0, 1.0);
-  float delayToGalaxy = mix(aRandom.x, fromCore, 0.6);
 
   // ── 2. How far along is it? ────────────────────────────────────────────────
-  // uProgress - 0.0 covers the first morph, uProgress - 1.0 the second.
-  vec2 t = vec2(
-    morphProgress(uProgress - 0.0, delayToNebula),
-    morphProgress(uProgress - 1.0, delayToGalaxy)
-  );
+  // uProgress - 0.0 covers the first morph, uProgress - 1.0 the second, and so on.
+  float toNebula        = ease(travel(uProgress - 0.0, mix(aRandom.x, nameSweep, 0.5), uStagger));
+  float toConstellation = ease(travel(uProgress - 1.0, mix(aRandom.x, skySweep, 0.45), uStagger));
+  float toGalaxy        = ease(travel(uProgress - 2.0, mix(aRandom.x, fromCore, 0.6), uStagger));
+
+  // Galaxy → burst is a supernova, so it does not travel in a straight line:
+  // first everything COLLAPSES to the centre, then it BLOOMS back out.
+  // Very little stagger here, so the particles all arrive at the centre together.
+  float nova = travel(uProgress - 3.0, aRandom.x, 0.22);
+  float collapse = pow(min(nova / 0.46, 1.0), 2.4);                          // slow, then faster and faster
+  float bloom = 1.0 - pow(1.0 - clamp((nova - 0.52) / 0.48, 0.0, 1.0), 3.0); // violent, then coasting
+  float implosion = collapse * (1.0 - bloom);                                // rises as matter falls in, gone once it bursts
+  float flash = smoothstep(0.65, 1.0, collapse) * (1.0 - bloom);             // only in the last moments at the centre
+
+  // One weight per morph, used to blend sizes, colours and so on.
+  vec4 w = vec4(toNebula, toConstellation, toGalaxy, bloom);
 
   // ── 3. Blend the shapes ────────────────────────────────────────────────────
-  vec3 pos = blendShapes(idleName(position), idleNebula(aNebula), idleGalaxy(aGalaxy), t);
+  vec3 pos = mix(restName(position), restNebula(aNebula), toNebula);
+  pos = mix(pos, aConstellation, toConstellation);
+  pos = mix(pos, restGalaxy(aGalaxy), toGalaxy);
+  pos = mix(pos, vec3(0.0), collapse);                 // implode to a single point …
+  pos = mix(pos, restBurst(aBurst), bloom);            // … then burst out of it
 
   // ── 4. Make the journey organic ────────────────────────────────────────────
   // `flight` is 0 while the particle sits in a shape and rises to 1 at the
   // midpoint of its trip (half a sine wave). Multiplying an effect by it means
   // "only while travelling", and guarantees every shape is exact on arrival.
-  float flight = sin(t.x * PI) + sin(t.y * PI);
+  float flight = sin(toNebula * PI) + sin(toConstellation * PI) + sin(toGalaxy * PI);
 
   // Twist around the centre of the screen, so particles spiral rather than
   // slide in straight lines. aRandom.w varies the amount per particle.
-  pos.xy = rotate(flight * uSwirl * (0.6 + 0.8 * aRandom.w)) * pos.xy;
+  // The supernova gets its own, stronger twist: matter spirals in as it
+  // collapses and unwinds as it blooms.
+  float twist = flight * uSwirl * (0.6 + 0.8 * aRandom.w) + implosion * 2.6;
+  pos.xy = rotate(twist) * pos.xy;
 
-  // Blow the particle off course along the noise "wind".
-  pos += flow(pos * 0.2 + uTime * 0.05) * uTurbulence * flight;
+  // Wander along the noise "wind". At rest this is each shape's own gentle
+  // drift (a shimmer for the name, billowing for the nebula). In flight it
+  // grows into real turbulence. One flow() lookup serves both.
+  float drift = blendShapes(uShapeDrift, w) + uTurbulence * flight;
+  float driftScale = mix(blendShapes(uShapeDriftScale, w), 0.2, min(flight, 1.0));
+  pos += flow(pos * driftScale + uTime * 0.05) * drift;
 
   // ── 5. World space → camera space ──────────────────────────────────────────
   // After this, the camera sits at the origin looking down the -z axis.
@@ -184,8 +259,9 @@ void main() {
   gl_Position = projectionMatrix * viewPosition;
 
   // ── 7. Size ────────────────────────────────────────────────────────────────
-  float size = blendShapes(uShapeSize[NAME], uShapeSize[NEBULA], uShapeSize[GALAXY], t);
+  float size = blendShapes(uShapeSize, w);
   size *= mix(0.55, 2.0, aRandom.y);                   // aRandom.y is biased small: many specks, few big stars
+  size *= 1.0 - 0.5 * flash;                           // packed tight at the heart of the supernova
 
   // About 1 in 28 particles is a "puff": six times larger but very faint.
   // A few thousand of these overlap into the soft haze around the sharp points,
@@ -198,7 +274,7 @@ void main() {
   float pixels = size * projectionMatrix[1][1] * uPixelHeight * 0.5 / max(depth, 0.001);
 
   // ── 8. Brightness ──────────────────────────────────────────────────────────
-  float alpha = blendShapes(uShapeAlpha[NAME], uShapeAlpha[NEBULA], uShapeAlpha[GALAXY], t);
+  float alpha = blendShapes(uShapeAlpha, w);
   alpha *= mix(1.0, 0.09, puff);
 
   // Twinkle: each particle pulses at its own speed and phase.
@@ -213,10 +289,16 @@ void main() {
   // Fade out particles that are about to hit the camera, so they do not pop.
   alpha *= smoothstep(0.15, 1.5, depth);
 
+  // The very start of the intro fades up from a black screen.
+  alpha *= smoothstep(0.0, 0.07, uIntro);
+
   gl_PointSize = clamp(pixels, uMinPointSize, uPixelHeight * 0.12);
 
   // ── 9. Colour ──────────────────────────────────────────────────────────────
-  vColor = blendShapes(aColorName, aColorNebula, aColorGalaxy, t);
+  vColor = blendShapes(aColorName, aColorNebula, aColorConstellation, aColorGalaxy, aColorBurst, w);
   vColor *= 1.0 + 0.35 * flight;                       // glow a little hotter while in flight
+  // At the centre of the supernova everything turns white-hot. Thousands of
+  // particles stacked on one spot add up (additive blending) into one blazing point.
+  vColor = mix(vColor, vec3(1.0, 0.95, 0.85), flash * 0.85) * (1.0 + 0.6 * flash);
   vAlpha = alpha;
 }

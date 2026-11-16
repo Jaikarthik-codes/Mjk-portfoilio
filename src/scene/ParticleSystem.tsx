@@ -1,11 +1,18 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { content } from '../data/content'
+import { rig } from '../journey/rig'
 import { createRng } from '../lib/random'
 import { useStore } from '../store/useStore'
 import { GALAXY_SHAPE, MOTION, PARTICLE_COUNT, SHAPE_LOOK, SHAPES } from './config'
 import { getNameLayout, type NameLayout } from './nameLayout'
+import { pointer } from './pointer'
 import { buildShapes } from './shapeGenerators'
+import {
+  layoutConstellations,
+  type ConstellationField,
+} from './shapeGenerators/constellationLayout'
 import noiseGlsl from './shaders/noise.glsl?raw'
 import fragmentShader from './shaders/particles.frag.glsl?raw'
 import vertexShader from './shaders/particles.vert.glsl?raw'
@@ -24,24 +31,25 @@ export function ParticleSystem() {
   // Re-renders only when the screen flips between portrait and landscape.
   const portrait = useThree((state) => state.size.width < state.size.height)
   const layout = useMemo(() => getNameLayout(portrait), [portrait])
+  const field = useMemo(() => layoutConstellations(content.skills, portrait), [portrait])
 
-  const geometry = useMemo(() => createGeometry(count, layout), [count, layout])
+  const geometry = useMemo(() => createGeometry(count, layout, field), [count, layout, field])
   const material = useMemo(() => createMaterial(), [])
 
   // Free GPU memory when the geometry is replaced or the component goes away.
   useEffect(() => () => geometry.dispose(), [geometry])
   useEffect(() => () => material.dispose(), [material])
 
-  // Uniforms that depend on the particle count or the name layout.
+  // Uniforms that depend on the particle count or the layout.
   useEffect(() => {
     // With fewer particles each one has to carry more light, or the shapes look thin.
     const boost = Math.pow(PARTICLE_COUNT.high / count, 0.25)
     material.uniforms.uShapeSize.value = SHAPES.map((shape) => SHAPE_LOOK[shape].size * boost)
     material.uniforms.uShapeAlpha.value = SHAPES.map((shape) => SHAPE_LOOK[shape].alpha * boost)
     material.uniforms.uNameWidth.value = layout.width
-  }, [material, count, layout])
+    material.uniforms.uFieldWidth.value = field.width
+  }, [material, count, layout, field])
 
-  const pointer = usePointer()
   const smoothPointer = useRef({ x: 0, y: 0, strength: 0 })
 
   useFrame((state, delta) => {
@@ -51,14 +59,9 @@ export function ParticleSystem() {
     // after the tab has been in the background for a while.
     uniforms.uTime.value += Math.min(delta, 0.1)
 
-    // Glide toward the requested morph value instead of jumping to it, so slider
-    // drags (and later, scroll) always feel smooth.
-    uniforms.uProgress.value = THREE.MathUtils.damp(
-      uniforms.uProgress.value,
-      useStore.getState().morph, // read directly: no React re-render per frame
-      MOTION.morphDamping,
-      delta,
-    )
+    // The rig is written by GSAP as you scroll (see journey/useJourney.ts).
+    uniforms.uProgress.value = rig.morph
+    uniforms.uIntro.value = rig.intro
 
     const dpr = state.viewport.dpr
     uniforms.uPixelHeight.value = state.size.height * dpr
@@ -70,13 +73,13 @@ export function ParticleSystem() {
     const smooth = smoothPointer.current
     if (smooth.strength < 0.01) {
       // The push is invisible right now, so jump straight to the pointer.
-      smooth.x = pointer.current.x
-      smooth.y = pointer.current.y
+      smooth.x = pointer.x
+      smooth.y = pointer.y
     } else {
-      smooth.x = THREE.MathUtils.damp(smooth.x, pointer.current.x, 9, delta)
-      smooth.y = THREE.MathUtils.damp(smooth.y, pointer.current.y, 9, delta)
+      smooth.x = THREE.MathUtils.damp(smooth.x, pointer.x, 9, delta)
+      smooth.y = THREE.MathUtils.damp(smooth.y, pointer.y, 9, delta)
     }
-    smooth.strength = THREE.MathUtils.damp(smooth.strength, pointer.current.active ? 1 : 0, 4, delta)
+    smooth.strength = THREE.MathUtils.damp(smooth.strength, pointer.active ? 1 : 0, 4, delta)
     uniforms.uPointer.value.set(smooth.x, smooth.y)
     uniforms.uPointerStrength.value = smooth.strength * MOTION.pointerStrength
   })
@@ -87,17 +90,26 @@ export function ParticleSystem() {
 }
 
 /** Packs every shape into one geometry, as one attribute per shape. */
-function createGeometry(count: number, layout: NameLayout): THREE.BufferGeometry {
-  const shapes = buildShapes(count, { nameLines: layout.lines, nameWidth: layout.width })
+function createGeometry(
+  count: number,
+  layout: NameLayout,
+  field: ConstellationField,
+): THREE.BufferGeometry {
+  const shapes = buildShapes(count, { name: layout, constellations: field })
+  const attribute = (data: Float32Array, size: number) => new THREE.BufferAttribute(data, size)
 
   const geometry = new THREE.BufferGeometry()
   // three.js needs an attribute called `position`, so the name shape gets that slot.
-  geometry.setAttribute('position', new THREE.BufferAttribute(shapes.name.positions, 3))
-  geometry.setAttribute('aNebula', new THREE.BufferAttribute(shapes.nebula.positions, 3))
-  geometry.setAttribute('aGalaxy', new THREE.BufferAttribute(shapes.galaxy.positions, 3))
-  geometry.setAttribute('aColorName', new THREE.BufferAttribute(shapes.name.colors, 3))
-  geometry.setAttribute('aColorNebula', new THREE.BufferAttribute(shapes.nebula.colors, 3))
-  geometry.setAttribute('aColorGalaxy', new THREE.BufferAttribute(shapes.galaxy.colors, 3))
+  geometry.setAttribute('position', attribute(shapes.name.positions, 3))
+  geometry.setAttribute('aNebula', attribute(shapes.nebula.positions, 3))
+  geometry.setAttribute('aConstellation', attribute(shapes.constellation.positions, 3))
+  geometry.setAttribute('aGalaxy', attribute(shapes.galaxy.positions, 3))
+  geometry.setAttribute('aBurst', attribute(shapes.burst.positions, 3))
+  geometry.setAttribute('aColorName', attribute(shapes.name.colors, 3))
+  geometry.setAttribute('aColorNebula', attribute(shapes.nebula.colors, 3))
+  geometry.setAttribute('aColorConstellation', attribute(shapes.constellation.colors, 3))
+  geometry.setAttribute('aColorGalaxy', attribute(shapes.galaxy.colors, 3))
+  geometry.setAttribute('aColorBurst', attribute(shapes.burst.colors, 3))
 
   // Four random numbers per particle (see `aRandom` in the vertex shader).
   const rng = createRng(55)
@@ -108,7 +120,7 @@ function createGeometry(count: number, layout: NameLayout): THREE.BufferGeometry
     random[i * 4 + 2] = rng() // twinkle rhythm
     random[i * 4 + 3] = rng() // spare dice roll
   }
-  geometry.setAttribute('aRandom', new THREE.BufferAttribute(random, 4))
+  geometry.setAttribute('aRandom', attribute(random, 4))
 
   return geometry
 }
@@ -119,14 +131,18 @@ function createMaterial(): THREE.ShaderMaterial {
     fragmentShader,
     uniforms: {
       uTime: { value: 0 },
-      uProgress: { value: useStore.getState().morph },
+      uProgress: { value: rig.morph },
+      uIntro: { value: rig.intro },
       uShapeSize: { value: SHAPES.map((shape) => SHAPE_LOOK[shape].size) },
       uShapeAlpha: { value: SHAPES.map((shape) => SHAPE_LOOK[shape].alpha) },
+      uShapeDrift: { value: SHAPES.map((shape) => SHAPE_LOOK[shape].drift) },
+      uShapeDriftScale: { value: SHAPES.map((shape) => SHAPE_LOOK[shape].driftScale) },
       uStagger: { value: MOTION.stagger },
       uTurbulence: { value: MOTION.turbulence },
       uSwirl: { value: MOTION.swirl },
       uTwinkle: { value: MOTION.twinkle },
       uNameWidth: { value: 1 },
+      uFieldWidth: { value: 1 },
       uGalaxyRadius: { value: GALAXY_SHAPE.radius },
       uGalaxyTilt: { value: new THREE.Vector2(...GALAXY_SHAPE.tilt) },
       uPixelHeight: { value: 1080 },
@@ -142,47 +158,4 @@ function createMaterial(): THREE.ShaderMaterial {
     // Glowing dots should never hide each other, so they do not write depth.
     depthWrite: false,
   })
-}
-
-/**
- * Tracks the pointer in "normalised device coordinates": x and y from -1 to 1
- * with (0, 0) at the centre of the canvas and +y pointing up — the same space
- * the vertex shader measures the cursor push in.
- */
-function usePointer() {
-  const canvas = useThree((state) => state.gl.domElement)
-  const pointer = useRef({ x: 0, y: 0, active: false })
-
-  useEffect(() => {
-    const onMove = (event: PointerEvent) => {
-      const rect = canvas.getBoundingClientRect()
-      pointer.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-      pointer.current.y = 1 - ((event.clientY - rect.top) / rect.height) * 2
-      pointer.current.active = true
-    }
-    const deactivate = () => {
-      pointer.current.active = false
-    }
-    // A finger only "hovers" while it is touching the screen.
-    const onUp = (event: PointerEvent) => {
-      if (event.pointerType !== 'mouse') deactivate()
-    }
-
-    window.addEventListener('pointermove', onMove, { passive: true })
-    window.addEventListener('pointerdown', onMove, { passive: true })
-    window.addEventListener('pointerup', onUp, { passive: true })
-    window.addEventListener('pointercancel', deactivate)
-    window.addEventListener('blur', deactivate)
-    document.documentElement.addEventListener('pointerleave', deactivate)
-    return () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerdown', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', deactivate)
-      window.removeEventListener('blur', deactivate)
-      document.documentElement.removeEventListener('pointerleave', deactivate)
-    }
-  }, [canvas])
-
-  return pointer
 }

@@ -6,8 +6,9 @@ import { createGradient, createShape, rgb, tintToward } from './utils'
 export interface TextShapeOptions {
   /** One entry per line of text. */
   lines: string[]
-  /** World-space width the widest line should span. */
+  /** The text is scaled up until it reaches this width or this height, whichever comes first. */
   width: number
+  maxHeight: number
   rng: Rng
 }
 
@@ -33,13 +34,18 @@ const dustGradient = createGradient([rgb(PALETTE.violet), rgb(PALETTE.pink), rgb
  * The font must already be loaded (see useFontsReady) or the browser will
  * silently draw with a fallback font.
  */
-export function generateText(count: number, { lines, width, rng }: TextShapeOptions): ShapeData {
+export function generateText(
+  count: number,
+  { lines, width: maxWidth, maxHeight, rng }: TextShapeOptions,
+): ShapeData {
   const shape = createShape(count)
   const ink = rasterise(lines, rng)
 
-  // World units per canvas pixel, chosen so the text spans exactly `width`.
-  const scale = ink ? width / ink.boundsWidth : 1
-  const height = ink ? ink.boundsHeight * scale : width * 0.2
+  // World units per canvas pixel. Short names would become enormous if we only
+  // fitted the width, so the height is capped too.
+  const scale = ink ? Math.min(maxWidth / ink.boundsWidth, maxHeight / ink.boundsHeight) : 1
+  const width = ink ? ink.boundsWidth * scale : maxWidth
+  const height = ink ? ink.boundsHeight * scale : maxHeight
 
   for (let i = 0; i < count; i++) {
     const o = i * 3

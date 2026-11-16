@@ -40,6 +40,14 @@ export interface Content {
   }
   /** Shown on the secret planet's "about me" card in explore mode. */
   hobbies: string[]
+  /** Navigation labels and headings for each scroll section. */
+  sections: {
+    intro: { label: string; scrollHint: string }
+    about: { label: string; heading: string }
+    skills: { label: string; heading: string }
+    projects: { label: string; heading: string }
+    contact: { label: string; heading: string }
+  }
 }
 
 export const content: Content = {
@@ -103,4 +111,13 @@ export const content: Content = {
 
   // TODO
   hobbies: ['Stargazing', 'Photography', 'Chess', 'Sci-fi novels'],
+
+  // `label` appears in the navigation, `heading` is the large line in the section.
+  sections: {
+    intro: { label: 'Origin', scrollHint: 'Scroll to begin' },
+    about: { label: 'About', heading: 'Made of stardust and curiosity.' },
+    skills: { label: 'Skills', heading: 'Constellations of craft.' },
+    projects: { label: 'Projects', heading: 'Worlds I have built.' },
+    contact: { label: 'Contact', heading: 'Let’s make something stellar.' },
+  },
 }

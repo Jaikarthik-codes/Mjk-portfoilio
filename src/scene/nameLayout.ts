@@ -4,8 +4,9 @@ import { CAMERA, TEXT_SHAPE } from './config'
 export interface NameLayout {
   /** The name split into the lines it is drawn on. */
   lines: string[]
-  /** World-space width of the widest line. */
+  /** The name grows until it hits this width or this height (world units). */
   width: number
+  maxHeight: number
   stacked: boolean
 }
 
@@ -18,8 +19,18 @@ export function getNameLayout(portrait: boolean): NameLayout {
   const words = text.trim().split(/\s+/)
   const stacked = portrait && words.length > 1
   return stacked
-    ? { lines: words, width: TEXT_SHAPE.stackedWidth, stacked }
-    : { lines: [words.join(' ')], width: TEXT_SHAPE.width, stacked }
+    ? {
+        lines: words,
+        width: TEXT_SHAPE.stackedWidth,
+        maxHeight: TEXT_SHAPE.stackedMaxHeight,
+        stacked,
+      }
+    : {
+        lines: [words.join(' ')],
+        width: TEXT_SHAPE.width,
+        maxHeight: TEXT_SHAPE.maxHeight,
+        stacked,
+      }
 }
 
 /** How far back the camera must sit for a `width` × `height` area at the origin to fit on screen. */

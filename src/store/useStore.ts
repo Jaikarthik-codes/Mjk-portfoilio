@@ -1,18 +1,19 @@
 import { create } from 'zustand'
 import { detectQualityTier, type QualityTier } from '../lib/device'
-import { SHAPES } from '../scene/config'
 
-/** Highest valid morph value: one unit per step between shapes. */
-export const MAX_MORPH = SHAPES.length - 1
-
+/**
+ * Global app state — only things React components need to re-render for.
+ * Values that change every frame (scroll position, morph progress) live in
+ * src/journey/rig.ts instead.
+ */
 interface StardustState {
-  /**
-   * Where the particles are along the shape sequence.
-   * 0 = name, 1 = nebula, 2 = galaxy; 0.5 is halfway between name and nebula.
-   * Phase 1 drives this from the debug slider; Phase 2 hands it to scroll.
-   */
-  morph: number
-  setMorph: (value: number) => void
+  /** Index into SECTION_IDS of the section currently on screen. */
+  currentSection: number
+  setCurrentSection: (index: number) => void
+
+  /** True once the opening Big Bang has (nearly) finished and the intro text may appear. */
+  introDone: boolean
+  setIntroDone: (done: boolean) => void
 
   /** Decides the particle count. */
   quality: QualityTier
@@ -20,8 +21,11 @@ interface StardustState {
 }
 
 export const useStore = create<StardustState>((set) => ({
-  morph: 0,
-  setMorph: (value) => set({ morph: Math.min(MAX_MORPH, Math.max(0, value)) }),
+  currentSection: 0,
+  setCurrentSection: (currentSection) => set({ currentSection }),
+
+  introDone: false,
+  setIntroDone: (introDone) => set({ introDone }),
 
   quality: detectQualityTier(),
   setQuality: (quality) => set({ quality }),

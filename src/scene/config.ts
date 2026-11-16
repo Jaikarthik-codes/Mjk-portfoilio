@@ -12,10 +12,11 @@ export const PARTICLE_COUNT: Record<QualityTier, number> = {
 }
 
 /**
- * The order shapes appear in as the morph progress goes 0 → 1 → 2 …
- * Later phases append to this list (constellations, contact burst).
+ * The order shapes appear in as the morph progress goes 0 → 1 → 2 → 3 → 4.
+ * One shape per scroll section, in the same order as SECTION_IDS.
+ * (If you change this list, the #defines at the top of particles.vert.glsl must match.)
  */
-export const SHAPES = ['name', 'nebula', 'galaxy'] as const
+export const SHAPES = ['name', 'nebula', 'constellation', 'galaxy', 'burst'] as const
 export type ShapeName = (typeof SHAPES)[number]
 
 /**
@@ -40,6 +41,17 @@ export const PALETTE = {
   cream: '#fff0d6',
 } as const
 
+/**
+ * Background colour for each stage of the journey: violet → teal → gold.
+ * `inner` glows softly behind the middle of the screen, `outer` is the edge colour.
+ * Keep these very dark — the particles need a near-black sky to glow against.
+ */
+export const BACKDROP_GRADES = [
+  { inner: '#1c0d40', outer: '#05030d' }, // violet: intro and about
+  { inner: '#062a30', outer: '#02080b' }, // teal: skills and projects
+  { inner: '#2e1b07', outer: '#0a0503' }, // gold: contact
+] as const
+
 export const CAMERA = {
   fov: 50,
   near: 0.1,
@@ -55,10 +67,12 @@ export const TEXT_SHAPE = {
   letterSpacing: 0.14,
   /** Line height for the stacked (narrow screen) layout, as a multiple of the font size. */
   lineHeight: 1.05,
-  /** World-space width of the name on one line … */
+  /** Largest size the name may take on one line, in world units … */
   width: 11,
+  maxHeight: 1.7,
   /** … and when the words are stacked on narrow screens. */
   stackedWidth: 6.4,
+  stackedMaxHeight: 3.2,
   /** How thick the letters are front-to-back. */
   depth: 0.07,
   /** Share of particles that float around the letters as loose stardust. */
@@ -68,6 +82,15 @@ export const TEXT_SHAPE = {
 export const NEBULA_SHAPE = {
   /** Half-size of the cloud along x, y and z. */
   radii: [8.6, 4.7, 4.2] as const,
+}
+
+export const CONSTELLATION_SHAPE = {
+  /** Space given to each constellation (width, height) on landscape and portrait screens. */
+  cell: [6.4, 5.4] as const,
+  portraitCell: [5.0, 5.2] as const,
+  /** Share of particles that condense into the stars, and that trace the lines between them. */
+  starRatio: 0.5,
+  lineRatio: 0.14,
 }
 
 export const GALAXY_SHAPE = {
@@ -82,11 +105,32 @@ export const GALAXY_SHAPE = {
   tilt: [0.66, -0.24] as const,
 }
 
-/** Per-shape particle look. `size` is a diameter in world units, `alpha` an opacity. */
-export const SHAPE_LOOK: Record<ShapeName, { size: number; alpha: number }> = {
-  name: { size: 0.05, alpha: 0.4 },
-  nebula: { size: 0.095, alpha: 0.4 },
-  galaxy: { size: 0.07, alpha: 0.65 },
+export const BURST_SHAPE = {
+  /** Radius of the bright shock ring. The space inside it is left clear for the contact links. */
+  radius: 4.6,
+  /** Number of streaks flying out from the ring. */
+  rays: 30,
+  /** Share of particles in the ring, and in the rays. The rest is loose debris. */
+  ringRatio: 0.42,
+  rayRatio: 0.38,
+}
+
+/**
+ * Per-shape particle look.
+ *   size       — particle diameter in world units
+ *   alpha      — particle opacity
+ *   drift      — how far (world units) particles wander while the shape is at rest
+ *   driftScale — size of the drift's swirls: small = broad, slow billows; large = fine shimmer
+ */
+export const SHAPE_LOOK: Record<
+  ShapeName,
+  { size: number; alpha: number; drift: number; driftScale: number }
+> = {
+  name: { size: 0.05, alpha: 0.4, drift: 0.028, driftScale: 0.9 },
+  nebula: { size: 0.095, alpha: 0.4, drift: 0.42, driftScale: 0.16 },
+  constellation: { size: 0.06, alpha: 0.5, drift: 0.03, driftScale: 0.5 },
+  galaxy: { size: 0.07, alpha: 0.65, drift: 0, driftScale: 0.3 },
+  burst: { size: 0.065, alpha: 0.55, drift: 0.07, driftScale: 0.3 },
 }
 
 /** How the particles move. These map one-to-one onto uniforms in particles.vert.glsl. */
@@ -99,9 +143,9 @@ export const MOTION = {
   swirl: 0.85,
   /** 0..1 — strength of the brightness flicker. */
   twinkle: 0.45,
-  /** How quickly the particles catch up with the requested morph value (higher = snappier). */
-  morphDamping: 7,
   /** Furthest the cursor pushes a particle, and how far its influence reaches (1.0 = half the screen height). */
   pointerStrength: 0.05,
   pointerRadius: 0.26,
+  /** Length of the opening Big Bang, in seconds. */
+  introSeconds: 5.6,
 }
