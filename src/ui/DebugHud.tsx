@@ -1,3 +1,4 @@
+import gsap from 'gsap'
 import { useEffect, useState } from 'react'
 import { rig } from '../journey/rig'
 import { JOURNEY_END } from '../journey/sections'
@@ -18,6 +19,13 @@ export function DebugHud() {
   const quality = useStore((state) => state.quality)
   const setQuality = useStore((state) => state.setQuality)
   const { fps, journey, morph, camera } = useLiveReadout()
+
+  // Handles for poking at the experience from the browser console (and from
+  // automated tests): e.g. stardust.gsap.globalTimeline.timeScale(0.2) plays
+  // every animation, warps included, at a fifth of the speed.
+  useEffect(() => {
+    Object.assign(window, { stardust: { rig, gsap, store: useStore } })
+  }, [])
 
   const scrollToJourney = (value: number) => {
     const scrollable = document.documentElement.scrollHeight - window.innerHeight

@@ -2,7 +2,8 @@
 
 An interactive 3D portfolio. One GPU particle system morphs between shapes as
 you scroll — a name, a nebula, constellations, a spiral galaxy, a supernova —
-entirely in shaders.
+entirely in shaders. Each skill is a star you can point at; each project is a
+star system in the galaxy that you can warp to.
 
 ## Run it
 
@@ -15,7 +16,9 @@ npm run preview  # serve the production build
 
 Add `?debug` to the address (e.g. `http://localhost:5173/?debug`) for a
 developer panel: frame rate, live journey values, a slider that scrubs the
-whole page, and a particle-count toggle.
+whole page, and a particle-count toggle. It also exposes `stardust` in the
+browser console — `stardust.gsap.globalTimeline.timeScale(0.2)` plays every
+animation, warps included, at a fifth of the speed.
 
 Deploys to Vercel as-is: import the repo and accept the detected Vite preset
 (build `npm run build`, output `dist`).
@@ -24,36 +27,53 @@ Deploys to Vercel as-is: import the repo and accept the detected Vite preset
 
 All text, skills, projects, links and section headings live in
 **`src/data/content.ts`**. Change `name` there and the particles spell the new
-name; change the skills and the constellations redraw themselves.
+name; change the skills and the constellations redraw themselves; add a project
+and a new star system appears in the galaxy, with one planet per technology.
 
 ## Where things are
 
 ```
 src/
   data/content.ts              all site content
-  store/useStore.ts            global state (Zustand): current section, quality
+  store/useStore.ts            global state (Zustand): current section, hover, open project, quality
   journey/
     sections.ts                section order, lengths and timing
-    rig.ts                     the live values scroll drives (morph, camera, colour)
+    rig.ts                     the live values scroll and warps drive (morph, camera, colour, warp)
     useJourney.ts              the GSAP ScrollTrigger timeline + the opening Big Bang
-  lib/                         device detection, seeded random, font loading
+    warp.ts                    flying to a star system, between systems, and back
+  lib/                         device detection, seeded random, hashing, font loading
   ui/
     Overlay.tsx                the five HTML scroll sections
     sections/                  one component per section
     SectionNav.tsx             floating nav with dots
+    ProjectPanel.tsx           the glass panel a warp opens (a native modal <dialog>)
+    Tooltip.tsx                the label beside stars and planets
     DebugHud.tsx               the ?debug panel
   scene/
     config.ts                  look-and-feel constants: palette, sizes, motion
-    Scene.tsx                  the WebGL canvas
+    Scene.tsx                  the WebGL canvas (and a note on colour)
+    frame.ts                   shared clock, canvas size and cursor uniforms
     ParticleSystem.tsx         builds the geometry + material, updates uniforms
-    CameraRig.tsx              scroll-driven camera
-    cameraPoses.ts             one camera pose per section
+    CameraRig.tsx              scroll camera, warp flight, and where the warp is heading
+    cameraPoses.ts             one camera pose per section, and the star-system close-up
     Backdrop.tsx               the sky gradient (violet → teal → gold)
-    pointer.ts                 shared cursor position
+    Effects.tsx                post-processing (the warp's colour fringing)
+    galaxyFrame.ts             the galaxy's spin and tilt, mirrored from the shader
+    picking.ts                 hover and tap tests, done on screen
+    instanced.ts, materials.ts thin lines and glowing sprites, many per draw call
+    skills/SkillStars.tsx      skill stars + constellation lines, with hover labels
+    projects/
+      systemLayout.ts          where each project's star system and planets go
+      StarSystems.tsx          stars, orbits and planets; hover and click to warp
+    warp/                      hyperspace streaks and the colour-fringing effect
     shapeGenerators/           one file per shape: text, nebula, constellation, galaxy, burst
     shaders/
       particles.vert.glsl      the morph engine (start reading here)
       particles.frag.glsl      draws each particle as a soft glowing dot
+      pointer.glsl             cursor gravity, shared by several shaders
+      lines.*, sprite.vert, star.frag   constellation lines, orbits and stars
+      planet.*                 lit planets with cloud bands and atmosphere
+      streak.*, warp.frag      hyperspace streaks and the warp's chromatic aberration
       backdrop.*.glsl          the sky gradient
       noise.glsl               smooth-noise helpers
 ```
@@ -74,14 +94,42 @@ numbers into `rig`; the shader, camera and backdrop read them every frame.
 Each section is two screens tall, and its text is pinned in place while you
 scroll through it.
 
+**The warp.** Click a star system (or a project in the list) and `warp.ts`
+animates `rig.warp` from 0 to 1. The camera blends from its scroll pose to a
+close-up of the system — distance on a logarithmic scale, so the approach feels
+like constant acceleration — while `rig.warpFx` drives the hyperspace streaks,
+a wider lens and a radial chromatic aberration. The galaxy's dust clears around
+the system, and the project panel opens as the camera brakes. Escape, the close
+button or a click on empty space flies you back to the exact scroll position.
+
+**Pointing at things.** Rather than casting rays into the scene, every frame
+the site works out where each star, system and planet lands on screen and
+compares that with the cursor (`picking.ts`). It is cheap, and it matches what
+you see, including the cursor push.
+
+**Colour.** Every shader works in linear light and converts to sRGB itself, so
+the picture is identical with or without post-processing (see `Scene.tsx`).
+
 To tune the feel, change `MOTION`, `SHAPE_LOOK` and `BACKDROP_GRADES` in
-`src/scene/config.ts`, `TIMING` in `src/journey/sections.ts`, and the poses in
-`src/scene/cameraPoses.ts`.
+`src/scene/config.ts`, `SYSTEM_LOOK` in `src/scene/projects/systemLayout.ts`,
+`TIMING` in `src/journey/sections.ts`, the poses in `src/scene/cameraPoses.ts`,
+and the flight times at the top of `src/journey/warp.ts`.
+
+## Accessibility
+
+- Everything is real HTML text first: the skills list, the project list and the
+  project panel carry all the content; the 3D scene is decoration
+  (`aria-hidden`).
+- Projects open from keyboard-focusable buttons. The panel is a native modal
+  dialog: focus moves into it, Tab stays inside, Escape closes it, and focus
+  returns to where it was. ← and → step between systems.
+- With *reduced motion* switched on, the Big Bang is skipped and warps cut
+  straight to the system with no streaks or colour fringing.
 
 ## Build phases
 
 - [x] **1. Setup + particle morph engine** — name → nebula → galaxy
 - [x] **2. Scroll-driven camera path and all section morphs** — Big Bang intro, constellations, supernova, background grade, nav
-- [ ] 3. Constellation hover tooltips, project star systems, click-to-warp, project panels
+- [x] **3. Constellations, project star systems, warp, project panels** — hover labels, planets per tech, hyperspace streaks + chromatic aberration, glass panel
 - [ ] 4. Explore mode
 - [ ] 5. Postprocessing, sound, loader, mobile fallback, final polish

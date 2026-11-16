@@ -27,6 +27,8 @@ void main() {
 
   gl_FragColor = vec4(color, alpha);
 
-  // three.js helper: converts our linear-light colour to what the screen expects (sRGB).
-  #include <colorspace_fragment>
+  // Convert our linear-light colour to what the screen expects (sRGB).
+  // Every shader on the site does this itself, last thing, rather than leaving
+  // it to three.js — see the note on colour in Scene.tsx for why.
+  gl_FragColor = sRGBTransferOETF(gl_FragColor);
 }

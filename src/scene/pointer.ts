@@ -10,9 +10,16 @@ import { useEffect } from 'react'
  * window, or (on touch screens) no finger is down.
  *
  * Like the rig, this is a plain shared object: it changes constantly and is
- * only ever read inside the render loop.
+ * only ever read inside the render loop. (The smoothed copy the shaders use
+ * lives in frame.ts.)
  */
-export const pointer = { x: 0, y: 0, active: false }
+export const pointer = {
+  x: 0,
+  y: 0,
+  active: false,
+  /** 'mouse', 'pen' or 'touch'. Only a mouse or pen can hover; a finger taps. */
+  type: 'mouse' as string,
+}
 
 /** Keeps `pointer` up to date. Mount once, inside the canvas. */
 export function PointerTracker() {
@@ -24,6 +31,7 @@ export function PointerTracker() {
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
       pointer.y = 1 - ((event.clientY - rect.top) / rect.height) * 2
       pointer.active = true
+      pointer.type = event.pointerType
     }
     const deactivate = () => {
       pointer.active = false

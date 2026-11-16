@@ -1,4 +1,5 @@
 import type { SkillGroup } from '../../data/content'
+import { hashString } from '../../lib/hash'
 import { createRng } from '../../lib/random'
 import { CONSTELLATION_SHAPE } from '../config'
 
@@ -29,9 +30,9 @@ export interface ConstellationField {
 /**
  * Turns the skill groups into constellations: one per group, one star per skill.
  *
- * This is the single source of truth for where the stars are. The particle
- * shape uses it now; in Phase 3 the hover tooltips and drawn lines use the
- * very same positions, so everything lines up.
+ * This is the single source of truth for where the stars are: the particle
+ * shape, the bright star markers, the drawn lines and the hover tooltips all
+ * read the very same positions, so everything lines up.
  *
  * The result is deterministic: the same skills always give the same sky.
  */
@@ -148,14 +149,4 @@ function connectStars(stars: ConstellationStar[]): [number, number][] {
 
 function distance2D(a: Vec3, b: Vec3): number {
   return Math.hypot(a[0] - b[0], a[1] - b[1])
-}
-
-/** Small string hash (FNV-1a), used only to seed the random generator. */
-function hashString(text: string): number {
-  let hash = 2166136261
-  for (let i = 0; i < text.length; i++) {
-    hash ^= text.charCodeAt(i)
-    hash = Math.imul(hash, 16777619)
-  }
-  return hash >>> 0
 }

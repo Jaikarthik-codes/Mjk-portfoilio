@@ -64,3 +64,16 @@ export function getCameraPoses(
         { target: [0, 0, 0], azimuth: 0, elevation: 0, frame: [ring / 0.6, ring / 0.74], shift: [0, 0], roll: 0 },
       ]
 }
+
+/**
+ * How the camera frames a star system you have warped to, as multiples of the
+ * system's radius: `frame` is the width × height to keep in shot and `shift`
+ * where the system sits on screen. It is placed beside the project panel: left
+ * of it on wide screens, above it on tall ones (where the panel is a sheet
+ * along the bottom).
+ */
+export function getFocusFraming(portrait: boolean): { frame: [number, number]; shift: [number, number] } {
+  return portrait
+    ? { frame: [2.5, 2.5 / 0.42], shift: [0, 0.46] }
+    : { frame: [2.4 / 0.6, 3], shift: [-0.36, 0.02] }
+}

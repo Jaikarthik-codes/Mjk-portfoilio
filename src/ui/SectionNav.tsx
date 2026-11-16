@@ -19,18 +19,21 @@ function goToSection(event: MouseEvent<HTMLAnchorElement>, id: SectionId) {
  */
 export function SectionNav() {
   const current = useStore((state) => state.currentSection)
+  // Out of the way while visiting a star system (the page is inert then anyway).
+  const away = useStore((state) => state.activeProject !== null)
+  const hide = `transition-opacity duration-500 ${away ? 'pointer-events-none opacity-0' : 'opacity-100'}`
 
   return (
     <>
       <a
         href="#intro"
         onClick={(event) => goToSection(event, 'intro')}
-        className="fixed left-5 top-5 z-20 font-mono text-[11px] uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white sm:left-7 sm:top-7"
+        className={`${hide} fixed left-5 top-5 z-20 font-mono text-[11px] uppercase tracking-[0.22em] text-white/80 hover:text-white sm:left-7 sm:top-7`}
       >
         Stardust Origin
       </a>
 
-      <nav aria-label="Sections" className="fixed right-2 top-1/2 z-20 -translate-y-1/2 sm:right-5">
+      <nav aria-label="Sections" className={`${hide} fixed right-2 top-1/2 z-20 -translate-y-1/2 sm:right-5`}>
         <ol className="flex flex-col items-end">
           {SECTION_IDS.map((id, index) => {
             const active = index === current

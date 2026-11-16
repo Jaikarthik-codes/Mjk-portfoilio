@@ -26,8 +26,10 @@ void main() {
 
   gl_FragColor = vec4(color, 1.0);
 
-  // three.js helper: converts our linear-light colour to what the screen expects (sRGB).
-  #include <colorspace_fragment>
+  // Convert our linear-light colour to what the screen expects (sRGB).
+  // Every shader on the site does this itself, last thing, rather than leaving
+  // it to three.js — see the note on colour in Scene.tsx for why.
+  gl_FragColor = sRGBTransferOETF(gl_FragColor);
 
   // Dithering. A screen can only show 256 levels per colour channel, so a very
   // dark, very smooth gradient breaks into visible stripes ("banding"). Adding

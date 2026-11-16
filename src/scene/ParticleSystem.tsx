@@ -1,13 +1,15 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { content } from '../data/content'
 import { rig } from '../journey/rig'
 import { createRng } from '../lib/random'
 import { useStore } from '../store/useStore'
+import { warpView } from './CameraRig'
 import { GALAXY_SHAPE, MOTION, PARTICLE_COUNT, SHAPE_LOOK, SHAPES } from './config'
+import { frameUniforms } from './frame'
 import { getNameLayout, type NameLayout } from './nameLayout'
-import { pointer } from './pointer'
+import { layoutSystems } from './projects/systemLayout'
 import { buildShapes } from './shapeGenerators'
 import {
   layoutConstellations,
@@ -15,6 +17,7 @@ import {
 } from './shapeGenerators/constellationLayout'
 import noiseGlsl from './shaders/noise.glsl?raw'
 import fragmentShader from './shaders/particles.frag.glsl?raw'
+import pointerGlsl from './shaders/pointer.glsl?raw'
 import vertexShader from './shaders/particles.vert.glsl?raw'
 
 /**
@@ -50,38 +53,19 @@ export function ParticleSystem() {
     material.uniforms.uFieldWidth.value = field.width
   }, [material, count, layout, field])
 
-  const smoothPointer = useRef({ x: 0, y: 0, strength: 0 })
-
-  useFrame((state, delta) => {
+  useFrame((state) => {
     const uniforms = material.uniforms
 
-    // Advance the animation clock. The cap stops everything lurching forward
-    // after the tab has been in the background for a while.
-    uniforms.uTime.value += Math.min(delta, 0.1)
-
     // The rig is written by GSAP as you scroll (see journey/useJourney.ts).
+    // (The clock, canvas size and cursor are shared uniforms, updated in frame.ts.)
     uniforms.uProgress.value = rig.morph
     uniforms.uIntro.value = rig.intro
+    uniforms.uMinPointSize.value = 1.3 * state.viewport.dpr
 
-    const dpr = state.viewport.dpr
-    uniforms.uPixelHeight.value = state.size.height * dpr
-    uniforms.uMinPointSize.value = 1.3 * dpr
-    uniforms.uAspect.value = state.size.width / state.size.height
-
-    // Cursor gravity: follow the pointer with a little lag, and fade the push
-    // in and out rather than switching it.
-    const smooth = smoothPointer.current
-    if (smooth.strength < 0.01) {
-      // The push is invisible right now, so jump straight to the pointer.
-      smooth.x = pointer.x
-      smooth.y = pointer.y
-    } else {
-      smooth.x = THREE.MathUtils.damp(smooth.x, pointer.x, 9, delta)
-      smooth.y = THREE.MathUtils.damp(smooth.y, pointer.y, 9, delta)
-    }
-    smooth.strength = THREE.MathUtils.damp(smooth.strength, pointer.active ? 1 : 0, 4, delta)
-    uniforms.uPointer.value.set(smooth.x, smooth.y)
-    uniforms.uPointerStrength.value = smooth.strength * MOTION.pointerStrength
+    // Visiting a star system: clear a space around it (see warp.ts).
+    uniforms.uFocus.value = warpView.focus
+    uniforms.uFocusCenter.value.copy(warpView.focusCenter)
+    uniforms.uFocusRadius.value = warpView.focusRadius
   })
 
   // frustumCulled={false}: three.js would otherwise hide the whole cloud based on
@@ -127,10 +111,11 @@ function createGeometry(
 
 function createMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
-    vertexShader: `${noiseGlsl}\n${vertexShader}`,
+    vertexShader: `${noiseGlsl}\n${pointerGlsl}\n${vertexShader}`,
     fragmentShader,
     uniforms: {
-      uTime: { value: 0 },
+      // Clock, canvas size and cursor: shared with the other shaders (see frame.ts).
+      ...frameUniforms,
       uProgress: { value: rig.morph },
       uIntro: { value: rig.intro },
       uShapeSize: { value: SHAPES.map((shape) => SHAPE_LOOK[shape].size) },
@@ -144,13 +129,13 @@ function createMaterial(): THREE.ShaderMaterial {
       uNameWidth: { value: 1 },
       uFieldWidth: { value: 1 },
       uGalaxyRadius: { value: GALAXY_SHAPE.radius },
+      uGalaxySpin: { value: GALAXY_SHAPE.spin },
       uGalaxyTilt: { value: new THREE.Vector2(...GALAXY_SHAPE.tilt) },
-      uPixelHeight: { value: 1080 },
       uMinPointSize: { value: 1.3 },
-      uAspect: { value: 1 },
-      uPointer: { value: new THREE.Vector2() },
-      uPointerStrength: { value: 0 },
-      uPointerRadius: { value: MOTION.pointerRadius },
+      uFocusCenter: { value: new THREE.Vector3() },
+      uFocusRadius: { value: 1 },
+      uFocus: { value: 0 },
+      ...systemPockets(),
     },
     transparent: true,
     // Additive blending: overlapping particles add their light together.
@@ -158,4 +143,16 @@ function createMaterial(): THREE.ShaderMaterial {
     // Glowing dots should never hide each other, so they do not write depth.
     depthWrite: false,
   })
+}
+
+/** Where the star systems sit in the flat galaxy, for the pockets they clear (see the shader). */
+function systemPockets() {
+  const MAX_SYSTEMS = 12 // must match MAX_SYSTEMS in particles.vert.glsl
+  const systems = layoutSystems(content.projects).slice(0, MAX_SYSTEMS)
+  const pockets = Array.from({ length: MAX_SYSTEMS }, () => new THREE.Vector4(0, 0, 0, 1))
+  systems.forEach((system, i) => pockets[i].set(system.center.x, system.center.y, system.center.z, system.radius * 1.15))
+  return {
+    uSystems: { value: pockets },
+    uSystemCount: { value: systems.length },
+  }
 }

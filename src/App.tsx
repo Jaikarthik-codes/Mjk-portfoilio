@@ -4,7 +4,9 @@ import { TEXT_SHAPE } from './scene/config'
 import { Scene } from './scene/Scene'
 import { DebugHud } from './ui/DebugHud'
 import { Overlay } from './ui/Overlay'
+import { ProjectPanel } from './ui/ProjectPanel'
 import { SectionNav } from './ui/SectionNav'
+import { Tooltip } from './ui/Tooltip'
 
 const NAME_FONT = `${TEXT_SHAPE.fontWeight} 100px ${TEXT_SHAPE.fontFamily}`
 /** Add ?debug to the address to show the developer panel. */
@@ -26,6 +28,10 @@ export default function App() {
       <SectionNav />
       {/* The real content. Scrolling through it drives the scene. */}
       <Overlay />
+
+      {/* The label beside stars and planets, and the panel a warp opens. */}
+      <Tooltip />
+      <ProjectPanel />
 
       {DEBUG && <DebugHud />}
     </>

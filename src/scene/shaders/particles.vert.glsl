@@ -11,9 +11,10 @@
 //    shader blends between the stored positions. 50,000 particles move and the
 //    CPU does almost nothing.
 //
-//  (noise.glsl is pasted above this file, which is where snoise() and flow()
-//  come from. three.js also adds a few declarations for us automatically:
-//  `position`, `modelViewMatrix` and `projectionMatrix`.)
+//  (noise.glsl and pointer.glsl are pasted above this file, which is where
+//  snoise(), flow() and pushFromPointer() come from. three.js also adds a few
+//  declarations for us automatically: `position`, `modelViewMatrix` and
+//  `projectionMatrix`.)
 // ─────────────────────────────────────────────────────────────────────────────
 
 #define PI 3.141592653589793
@@ -42,13 +43,20 @@ uniform float uTwinkle;                       // 0..1 — strength of the bright
 uniform float uNameWidth;                     // width of the name, to normalise its dissolve sweep
 uniform float uFieldWidth;                    // width of the constellation field, for the same reason
 uniform float uGalaxyRadius;
+uniform float uGalaxySpin;                    // how fast the galaxy turns (radians per second)
 uniform vec2  uGalaxyTilt;                    // x = lean toward the camera, y = roll (radians)
 uniform float uPixelHeight;                   // height of the canvas in real device pixels
 uniform float uMinPointSize;                  // smallest point we allow, in device pixels
-uniform float uAspect;                        // canvas width / height
-uniform vec2  uPointer;                       // cursor position, -1..1 on both axes (0,0 = screen centre)
-uniform float uPointerStrength;               // how hard the cursor pushes; 0 turns it off
-uniform float uPointerRadius;                 // reach of the cursor push (1.0 = half the screen height)
+// Visiting a star system (click one in the galaxy): the dust around it clears
+// so the system stands out, and the rest of the galaxy dims a little.
+uniform vec3  uFocusCenter;                   // where the system is
+uniform float uFocusRadius;                   // how big a space to clear around it
+uniform float uFocus;                         // 0 = not visiting, 1 = arrived
+// The star systems (one per project) clear a small pocket in the galaxy's dust,
+// so they stand out from across it. xyz = centre in the flat galaxy, w = radius.
+#define MAX_SYSTEMS 12
+uniform vec4  uSystems[MAX_SYSTEMS];
+uniform int   uSystemCount;
 
 // ── Attributes: values that are different for every particle ─────────────────
 // `position` (declared by three.js) holds the particle's place in the NAME shape.
@@ -161,8 +169,10 @@ vec3 restNebula(vec3 p) {
 
 // Galaxy: spin around its own axis first, then tilt the whole disc.
 // (Order matters: tilting first would make it wobble like a dropped coin.)
+// scene/galaxyFrame.ts repeats this exact sequence in JavaScript, so the
+// clickable star systems ride along with the particles.
 vec3 restGalaxy(vec3 p) {
-  p.xz = rotate(uTime * 0.05) * p.xz;     // spin
+  p.xz = rotate(uTime * uGalaxySpin) * p.xz;     // spin
   p.yz = rotate(uGalaxyTilt.x) * p.yz;    // lean toward the camera
   p.xy = rotate(uGalaxyTilt.y) * p.xy;    // roll
   return p;
@@ -238,23 +248,8 @@ void main() {
   float depth = -viewPosition.z;                       // distance in front of the camera
 
   // ── 6. Cursor gravity ──────────────────────────────────────────────────────
-  // Work out where the particle lands on screen, measure how far that is from
-  // the cursor, and push it directly away.
-  vec4 clip = projectionMatrix * viewPosition;
-  vec2 fromPointer = clip.xy / clip.w - uPointer;      // both in -1..1 screen space
-  fromPointer.x *= uAspect;                            // undo the stretch of wide screens
-  float reach = length(fromPointer) / uPointerRadius;  // 0 at the cursor, 1 at the edge of its reach
-
-  // The push follows the curve  reach * exp(-reach²):  zero right at the cursor,
-  // strongest a little way out, fading to nothing beyond. Starting from zero is
-  // what keeps it gentle: a push that is strongest at the cursor would fling
-  // every nearby particle outward and punch a hard-edged hole. This one spreads
-  // particles apart like a lens instead. (2.33 scales the curve's peak to 1.)
-  float push = uPointerStrength * 2.33 * reach * exp(-reach * reach);
-
-  // "* depth / projectionMatrix[1][1]" converts a screen-space distance into
-  // camera-space units, so far particles move as far on screen as near ones.
-  viewPosition.xy += normalize(fromPointer + 0.00001) * push * depth / projectionMatrix[1][1];
+  // Particles near the cursor are nudged aside, like a lens (see pointer.glsl).
+  viewPosition = pushFromPointer(viewPosition);
 
   gl_Position = projectionMatrix * viewPosition;
 
@@ -268,6 +263,7 @@ void main() {
   // which is much cheaper than making every particle big.
   float puff = step(0.965, aRandom.w);
   size *= mix(1.0, 6.0, puff);
+  size *= 1.0 - 0.35 * uFocus;                         // finer dust while visiting a star system
 
   // Perspective: convert world-space size to pixels. Things twice as far away
   // are drawn half as big. projectionMatrix[1][1] encodes the camera's zoom.
@@ -287,7 +283,23 @@ void main() {
   alpha *= shrink * shrink;
 
   // Fade out particles that are about to hit the camera, so they do not pop.
-  alpha *= smoothstep(0.15, 1.5, depth);
+  // While visiting a star system the camera sits inside the galaxy, so the
+  // fade reaches further out: close particles would be huge, blurry blobs.
+  alpha *= smoothstep(mix(0.15, 0.6, uFocus), mix(1.5, 3.2, uFocus), depth);
+
+  // Star-system pockets, while the galaxy is formed. Both are in the flat
+  // galaxy's coordinates (before spin and tilt), so they always line up.
+  float pocket = 1.0;
+  for (int i = 0; i < MAX_SYSTEMS; i++) {
+    if (i >= uSystemCount) break;
+    float d = distance(aGalaxy, uSystems[i].xyz) / uSystems[i].w;
+    pocket = min(pocket, smoothstep(0.3, 1.2, d));
+  }
+  alpha *= mix(1.0, 0.15 + 0.85 * pocket, toGalaxy * (1.0 - collapse));
+
+  // Visiting a star system: clear the dust around it and dim the rest.
+  float clearing = smoothstep(uFocusRadius * 0.55, uFocusRadius * 1.5, distance(pos, uFocusCenter));
+  alpha *= mix(1.0, 0.65 * clearing, uFocus);
 
   // The very start of the intro fades up from a black screen.
   alpha *= smoothstep(0.0, 0.07, uIntro);

@@ -103,6 +103,8 @@ export const GALAXY_SHAPE = {
   haloRatio: 0.12,
   /** Tilt (radians): x leans the disc toward the camera, y rolls it on screen. */
   tilt: [0.66, -0.24] as const,
+  /** How fast the galaxy turns, in radians per second (one turn every ~2 minutes). */
+  spin: 0.05,
 }
 
 export const BURST_SHAPE = {
