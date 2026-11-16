@@ -1,0 +1,96 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/outfit/wght.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
+
+/* Design tokens. Tailwind turns these into utilities, e.g. `bg-void`, `text-nebula-pink`, `font-mono`. */
+@theme {
+  --font-sans: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --color-void: #05030f;
+  --color-nebula-violet: #a685ff;
+  --color-nebula-lavender: #cdbdff;
+  --color-nebula-pink: #ff9fd6;
+  --color-nebula-teal: #5eead4;
+  --color-star-gold: #ffd9a0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  /* Phase 1 is a single full-screen canvas. Phase 2 turns scrolling on. */
+  overflow: hidden;
+  background: var(--color-void);
+  color: #fff;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Debug slider ─────────────────────────────────────────────────────────── */
+.stardust-range {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 1.5rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.stardust-range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--color-nebula-lavender),
+    var(--color-nebula-pink),
+    var(--color-nebula-teal)
+  );
+}
+
+.stardust-range::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--color-nebula-lavender),
+    var(--color-nebula-pink),
+    var(--color-nebula-teal)
+  );
+}
+
+.stardust-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  margin-top: -6px; /* centre the thumb on the 3px track */
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 0 4px rgb(255 255 255 / 0.12),
+    0 0 18px rgb(205 189 255 / 0.9);
+}
+
+.stardust-range::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 0 4px rgb(255 255 255 / 0.12),
+    0 0 18px rgb(205 189 255 / 0.9);
+}
+
+.stardust-range:focus-visible {
+  outline: 1px solid rgb(255 255 255 / 0.6);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
