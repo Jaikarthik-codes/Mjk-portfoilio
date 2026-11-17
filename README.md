@@ -23,6 +23,19 @@ animation, warps included, at a fifth of the speed.
 Deploys to Vercel as-is: import the repo and accept the detected Vite preset
 (build `npm run build`, output `dist`).
 
+### The look lab
+
+**`/lab`** (e.g. `http://localhost:5173/lab/`) shows each scene of the new
+look — stardust, both nebulae, the galaxy, the supernova — live, next to the
+reference image it is built from. Switch layers (gas, particles, bloom),
+motion, and the phone tier (10k particles, one gas plane) from the buttons.
+For tuning: `?ge=1.2` / `?pe=0.8` scale gas / particle exposure, `?gas=0`,
+`?particles=0`, `?bloom=0` start with a layer off, `?freeze` stops all motion.
+
+Reference images live in `public/textures/` as WebP (≤ 2048 px); the
+full-size originals are in `refs/originals/` and are not deployed. Sources
+and licences: [`CREDITS.md`](CREDITS.md).
+
 ## Edit your content
 
 All text, skills, projects, links and section headings live in
@@ -31,6 +44,12 @@ name; change the skills and the constellations redraw themselves; add a project
 and a new star system appears in the galaxy, with one planet per technology.
 
 ## Where things are
+
+The new two-layer look (being rolled out — see the lab above) lives in
+`src/look/`: `scenes.ts` (per-scene tuning), `sampleImage.ts` (image →
+particles), `GasLayer.tsx`, `StarParticles.tsx`, `LookEffects.tsx` (bloom,
+ACES tone mapping, space black), and their shaders in `src/look/shaders/`.
+The lab page itself is `src/lab/`.
 
 ```
 src/
