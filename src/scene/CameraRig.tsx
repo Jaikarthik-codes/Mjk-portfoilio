@@ -3,6 +3,7 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { content } from '../data/content'
 import { rig } from '../journey/rig'
+import { useStore } from '../store/useStore'
 import { CAMERA_ARCS, getCameraPoses, getFocusFraming } from './cameraPoses'
 import { CAMERA } from './config'
 import { clock } from './frame'
@@ -20,8 +21,12 @@ const PARALLAX = [0.05, 0.035]
 const WARP_FOV = 16
 /** How much further back the camera pulls mid-hop between two systems (1 = twice as far). */
 const HOP_ARC = 1.3
-/** How steeply the camera looks down onto a system's orbits (radians above their plane). */
-const FOCUS_ELEVATION = 0.62
+/**
+ * How steeply the camera looks onto a system's orbits (radians above their
+ * plane). Nearly face-on, like the galaxy itself: a lower angle would show
+ * the galaxy's gas for what it is, a flat picture.
+ */
+const FOCUS_ELEVATION = 1.18
 const STRAIGHT_AHEAD = new THREE.Vector3(0, 0, -1)
 
 /**
@@ -42,10 +47,15 @@ export const warpView = {
   focus: 0,
 }
 
+/** The scroll camera's distance from what it is looking at (before any warp), for sizing stars. */
+export const cameraView = {
+  scrollDistance: 12,
+}
+
 /**
  * The camera.
  *
- * Normally it follows the scroll: GSAP moves `rig.camera` from 0 to 4, a whole
+ * Normally it follows the scroll: GSAP moves `rig.camera` from 0 to 4 (one pose per section), a whole
  * number means "sit exactly in that section's pose", 1.5 means "halfway from
  * the About pose to the Skills pose", and each frame this blends the two
  * neighbouring poses.
@@ -82,7 +92,10 @@ export function CameraRig() {
   const focusDirection = useMemo(() => {
     const projects = poses[3]
     const fromPose = directionFromAngles(projects.azimuth, projects.elevation, new THREE.Vector3())
-    const flat = fromPose.clone().addScaledVector(GALAXY_NORMAL, -fromPose.dot(GALAXY_NORMAL)).normalize()
+    const flat = fromPose.clone().addScaledVector(GALAXY_NORMAL, -fromPose.dot(GALAXY_NORMAL))
+    // Seen straight on there is no "side" to lean toward: pick one.
+    if (flat.lengthSq() < 1e-6) flat.set(0, 1, 0).addScaledVector(GALAXY_NORMAL, -GALAXY_NORMAL.y)
+    flat.normalize()
     return GALAXY_NORMAL.clone()
       .multiplyScalar(Math.sin(FOCUS_ELEVATION))
       .addScaledVector(flat, Math.cos(FOCUS_ELEVATION))
@@ -110,9 +123,12 @@ export function CameraRig() {
   useFrame((state, delta) => {
     // ── 1. The scroll pose ────────────────────────────────────────────────────
     // Which two poses are we between, and how far along?
+    const calm = useStore.getState().calm
     const position = clamp(rig.camera, 0, poses.length - 1)
     const index = Math.min(poses.length - 2, Math.floor(position))
-    const blend = position - index
+    // Reduced motion: no glide between poses, a cut halfway (while the
+    // pictures are dissolving into each other).
+    const blend = calm ? (position - index < 0.5 ? 0 : 1) : position - index
     const from = poses[index]
     const to = poses[index + 1]
 
@@ -130,6 +146,7 @@ export function CameraRig() {
     let shiftX = lerp(from.shift[0], to.shift[0], blend)
     let shiftY = lerp(from.shift[1], to.shift[1], blend)
     let roll = lerp(from.roll, to.roll, blend)
+    cameraView.scrollDistance = distance
 
     // ── 2. Blend toward a star system while warping ───────────────────────────
     const warp = rig.warp
@@ -163,10 +180,11 @@ export function CameraRig() {
     warpView.focus = warp
 
     // ── 3. Life: lean gently toward the cursor, and never sit perfectly still ──
-    const leanTarget = pointer.active && pointer.type !== 'touch'
+    // (Reduced motion: neither.)
+    const leanTarget = pointer.active && pointer.type !== 'touch' && !calm
     lean.current.x = damp(lean.current.x, leanTarget ? pointer.x : 0, 2.5, delta)
     lean.current.y = damp(lean.current.y, leanTarget ? pointer.y : 0, 2.5, delta)
-    const time = state.clock.elapsedTime
+    const time = calm ? 0 : state.clock.elapsedTime
     azimuth += lean.current.x * PARALLAX[0] + Math.sin(time * 0.11) * 0.018
     elevation += lean.current.y * PARALLAX[1] + Math.cos(time * 0.09) * 0.012
 

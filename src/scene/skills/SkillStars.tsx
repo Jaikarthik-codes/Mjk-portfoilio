@@ -5,15 +5,16 @@ import { content } from '../../data/content'
 import { rig } from '../../journey/rig'
 import { useStore } from '../../store/useStore'
 import { moveTooltip } from '../../ui/tooltipAnchor'
-import { PALETTE } from '../config'
+import { LOOK_PALETTE } from '../../look/palette'
+import { SHAPE_INDEX } from '../config'
 import { createLineGeometry, createSpriteGeometry, type LineSpec } from '../instanced'
 import { createLineMaterial, createStarMaterial } from '../materials'
 import { isPageControl, nearest, toScreen, type ScreenPoint } from '../picking'
 import { pointer } from '../pointer'
 import { layoutConstellations } from '../shapeGenerators/constellationLayout'
 
-/** One colour per constellation, in the same order as HUES in shapeGenerators/constellation.ts. */
-const GROUP_COLOURS = [PALETTE.lavender, PALETTE.rose, PALETTE.mint, PALETTE.sky, PALETTE.gold]
+/** One colour per constellation (interim: Phase C replaces these stars with the new constellation look). */
+const GROUP_COLOURS = [LOOK_PALETTE.ice, LOOK_PALETTE.gold, LOOK_PALETTE.seaGreen, LOOK_PALETTE.rose, LOOK_PALETTE.white]
 
 /** How close (CSS pixels) the cursor must be to a star to light it up. */
 const HOVER_RADIUS = 26
@@ -32,7 +33,8 @@ interface Star {
 /** The constellations are on screen once their particles have gathered, and leave as soon as they scatter. */
 function constellationVisibility(morph: number) {
   const { smoothstep } = THREE.MathUtils
-  return smoothstep(morph, 1.84, 1.99) * (1 - smoothstep(morph, 2.01, 2.1))
+  const field = SHAPE_INDEX.field
+  return smoothstep(morph, field - 0.16, field - 0.01) * (1 - smoothstep(morph, field + 0.01, field + 0.1))
 }
 
 /**
@@ -47,7 +49,7 @@ export function SkillStars() {
   const size = useThree((state) => state.size)
   const portrait = size.width < size.height
 
-  // Exactly the layout the particle shape uses, so the stars sit on its clusters.
+  // The same layout the camera frames and the star field is spread around.
   const field = useMemo(() => layoutConstellations(content.skills, portrait), [portrait])
 
   const stars = useMemo<Star[]>(

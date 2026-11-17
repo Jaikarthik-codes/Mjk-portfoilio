@@ -41,3 +41,25 @@ export const TIMING = {
   textOutStart: 0.46,
   textOutLength: 0.14,
 }
+
+/**
+ * The particle shapes' schedule: when each morph starts and how long it takes,
+ * in journey units. There is one more shape than there are sections: About
+ * shows nebula A first, then turns into nebula B (the ring) while its text is
+ * on screen, so its move on to Skills starts (and ends) a little later.
+ */
+export const MORPHS: { start: number; length: number }[] = [
+  { start: 0 + TIMING.morphStart, length: TIMING.morphLength }, // name → nebula A
+  { start: 1.08, length: 0.26 }, //                                   nebula A → nebula B
+  { start: 1.48, length: 0.46 }, //                                   nebula B → star field
+  { start: 2 + TIMING.morphStart, length: TIMING.morphLength }, // star field → galaxy
+  { start: 3 + TIMING.morphStart, length: TIMING.morphLength }, // galaxy → supernova
+]
+
+/** The camera's schedule: one move per pair of sections (About's starts once nebula B has formed). */
+export const CAMERA_MOVES: { start: number; length: number }[] = [
+  { start: 0 + TIMING.cameraStart, length: TIMING.cameraLength },
+  { start: 1.4, length: 0.58 },
+  { start: 2 + TIMING.cameraStart, length: TIMING.cameraLength },
+  { start: 3 + TIMING.cameraStart, length: TIMING.cameraLength },
+]

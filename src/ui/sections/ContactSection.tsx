@@ -32,10 +32,10 @@ export function ContactSection() {
                 {...(link.external ? { target: '_blank', rel: 'noreferrer' } : {})}
                 className="interactive glow-link group block"
               >
-                <span className="block font-mono text-[10px] uppercase tracking-[0.32em] text-star-gold/80">
+                <span className="block font-mono text-[10px] uppercase tracking-[0.32em] text-gold/80">
                   {link.label}
                 </span>
-                <span className="mt-1 block break-words text-[clamp(0.95rem,1.1vw+0.7rem,1.3rem)] font-light text-white transition-colors group-hover:text-star-gold">
+                <span className="mt-1 block break-words text-[clamp(0.95rem,1.1vw+0.7rem,1.3rem)] font-light text-white transition-colors group-hover:text-gold">
                   {link.text}
                 </span>
               </a>

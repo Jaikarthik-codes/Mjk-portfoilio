@@ -63,5 +63,4 @@ void main() {
   // Fade to nothing at the edge of the circle so the square never shows.
   float edge = smoothstep(1.0, 0.85, d);
   gl_FragColor = vec4(color, edge * vAlpha);
-  gl_FragColor = sRGBTransferOETF(gl_FragColor);   // linear light → screen (see Scene.tsx)
 }

@@ -1,7 +1,8 @@
 import { gaussian, type Rng } from '../../lib/random'
-import { PALETTE, TEXT_SHAPE } from '../config'
+import { LOOK_PALETTE } from '../../look/palette'
+import { TEXT_SHAPE } from '../config'
 import type { ShapeData } from './types'
-import { createGradient, createShape, rgb, tintToward } from './utils'
+import { createGradient, createShape, rgb } from './utils'
 
 export interface TextShapeOptions {
   /** One entry per line of text. */
@@ -15,21 +16,21 @@ export interface TextShapeOptions {
 /** Font size used on the hidden canvas. Bigger = finer letter edges. */
 const FONT_PX = 180
 
-const WHITE = rgb(PALETTE.white)
+/** Across the name, left to right: ice blue, star white, warm gold (like the stars in stardust.jpg). */
 const letterGradient = createGradient([
-  rgb(PALETTE.lavender),
-  rgb(PALETTE.rose),
-  rgb(PALETTE.cream),
-  rgb(PALETTE.mint),
+  rgb(LOOK_PALETTE.ice),
+  rgb(LOOK_PALETTE.white),
+  rgb(LOOK_PALETTE.white),
+  rgb(LOOK_PALETTE.gold),
 ])
-const dustGradient = createGradient([rgb(PALETTE.violet), rgb(PALETTE.pink), rgb(PALETTE.teal)])
 
 /**
  * Turns text into particle positions.
  *
  * How it works: draw the text onto a hidden 2D canvas, read the pixels back,
  * and remember which pixels got ink. Each particle is then dropped onto one of
- * those inked pixels. A small share is scattered around the letters as loose dust.
+ * those inked pixels. Colours run from ice blue to gold across the name, at
+ * full strength (the caller sets the brightness).
  *
  * The font must already be loaded (see useFontsReady) or the browser will
  * silently draw with a fallback font.
@@ -49,15 +50,11 @@ export function generateText(
 
   for (let i = 0; i < count; i++) {
     const o = i * 3
-    const isDust = !ink || rng() < TEXT_SHAPE.dustRatio
-
-    if (isDust) {
-      // Loose stardust: a soft, wide halo around the letters.
-      const x = gaussian(rng) * width * 0.34
-      shape.positions[o] = x
-      shape.positions[o + 1] = gaussian(rng) * height * 1.1
-      shape.positions[o + 2] = gaussian(rng) * 0.9
-      dustGradient(x / width + 0.5, shape.colors, o, 0.5)
+    if (!ink) {
+      // No canvas (should not happen in a browser): a soft line where the name would be.
+      shape.positions[o] = (rng() - 0.5) * width
+      shape.positions[o + 1] = gaussian(rng) * height * 0.2
+      letterGradient(0.5, shape.colors, o)
       continue
     }
 
@@ -72,10 +69,7 @@ export function generateText(
     shape.positions[o] = x
     shape.positions[o + 1] = -(py - ink.centerY) * scale // canvas y points down, world y points up
     shape.positions[o + 2] = gaussian(rng) * TEXT_SHAPE.depth
-
-    // Pastel gradient across the name, pulled part-way to white so it stays readable.
     letterGradient(x / width + 0.5, shape.colors, o)
-    tintToward(shape.colors, o, WHITE, 0.2)
   }
 
   return shape

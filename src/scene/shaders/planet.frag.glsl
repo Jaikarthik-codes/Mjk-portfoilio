@@ -39,5 +39,4 @@ void main() {
              + vColor * rim * vLit * 1.4;              // brighter halo when pointed at
 
   gl_FragColor = vec4(color, uVisible);
-  gl_FragColor = sRGBTransferOETF(gl_FragColor);   // linear light → screen (see Scene.tsx)
 }

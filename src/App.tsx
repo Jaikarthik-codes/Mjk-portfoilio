@@ -1,5 +1,7 @@
 import { content } from './data/content'
 import { useFontReady } from './lib/fonts'
+import { useReducedMotionSync } from './lib/motion'
+import { useReferenceImages } from './look/useReferenceImage'
 import { TEXT_SHAPE } from './scene/config'
 import { Scene } from './scene/Scene'
 import { DebugHud } from './ui/DebugHud'
@@ -15,6 +17,9 @@ const DEBUG = new URLSearchParams(window.location.search).has('debug')
 export default function App() {
   // The particle name is drawn with this font, so the scene waits for it.
   const fontReady = useFontReady(NAME_FONT, content.name.toUpperCase())
+  // … and for the five reference images the gas and particles are made from.
+  const references = useReferenceImages()
+  useReducedMotionSync()
 
   return (
     <>
@@ -22,7 +27,7 @@ export default function App() {
           assistive technology is concerned. lvh keeps it from resizing when a
           phone's address bar slides away. */}
       <div className="fixed inset-x-0 top-0 h-lvh" aria-hidden="true">
-        {fontReady && <Scene />}
+        {fontReady && references && <Scene references={references} />}
       </div>
 
       <SectionNav />

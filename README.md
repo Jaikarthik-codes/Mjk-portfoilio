@@ -1,9 +1,12 @@
 # Stardust Origin
 
-An interactive 3D portfolio. One GPU particle system morphs between shapes as
-you scroll — a name, a nebula, constellations, a spiral galaxy, a supernova —
-entirely in shaders. Each skill is a star you can point at; each project is a
-star system in the galaxy that you can warp to.
+An interactive 3D portfolio. As you scroll, the sky changes from one deep-space
+picture to the next — stardust around a name, two nebulae, a calm star field,
+a spiral galaxy, a supernova. Each picture has two layers: its glowing gas (the
+reference image itself) and tens of thousands of particles sampled from it,
+which fly from one picture to the next entirely in shaders. Each skill is a
+star you can point at; each project is a star system in the galaxy that you
+can warp to.
 
 ## Run it
 
@@ -25,7 +28,7 @@ Deploys to Vercel as-is: import the repo and accept the detected Vite preset
 
 ### The look lab
 
-**`/lab`** (e.g. `http://localhost:5173/lab/`) shows each scene of the new
+**`/lab`** (e.g. `http://localhost:5173/lab/`) shows each scene of the
 look — stardust, both nebulae, the galaxy, the supernova — live, next to the
 reference image it is built from. Switch layers (gas, particles, bloom),
 motion, and the phone tier (10k particles, one gas plane) from the buttons.
@@ -45,11 +48,11 @@ and a new star system appears in the galaxy, with one planet per technology.
 
 ## Where things are
 
-The new two-layer look (being rolled out — see the lab above) lives in
-`src/look/`: `scenes.ts` (per-scene tuning), `sampleImage.ts` (image →
-particles), `GasLayer.tsx`, `StarParticles.tsx`, `LookEffects.tsx` (bloom,
-ACES tone mapping, space black), and their shaders in `src/look/shaders/`.
-The lab page itself is `src/lab/`.
+The look of each picture lives in `src/look/`: `scenes.ts` (per-image
+tuning, shared by the site and the lab), `sampleImage.ts` (image →
+particles), `GasLayer.tsx` (the gas material), `palette.ts`, and the lab's
+own `StarParticles.tsx` and `LookEffects.tsx`. The lab page itself is
+`src/lab/`.
 
 ```
 src/
@@ -57,7 +60,7 @@ src/
   store/useStore.ts            global state (Zustand): current section, hover, open project, quality
   journey/
     sections.ts                section order, lengths and timing
-    rig.ts                     the live values scroll and warps drive (morph, camera, colour, warp)
+    rig.ts                     the live values scroll and warps drive (morph, camera, warp)
     useJourney.ts              the GSAP ScrollTrigger timeline + the opening Big Bang
     warp.ts                    flying to a star system, between systems, and back
   lib/                         device detection, seeded random, hashing, font loading
@@ -69,15 +72,15 @@ src/
     Tooltip.tsx                the label beside stars and planets
     DebugHud.tsx               the ?debug panel
   scene/
-    config.ts                  look-and-feel constants: palette, sizes, motion
+    config.ts                  look-and-feel constants: quality tiers, shapes and their pictures, motion
     Scene.tsx                  the WebGL canvas (and a note on colour)
     frame.ts                   shared clock, canvas size and cursor uniforms
+    GasStack.tsx, gasState.ts  the gas pictures, and how they fade into each other as you scroll
     ParticleSystem.tsx         builds the geometry + material, updates uniforms
     CameraRig.tsx              scroll camera, warp flight, and where the warp is heading
     cameraPoses.ts             one camera pose per section, and the star-system close-up
-    Backdrop.tsx               the sky gradient (violet → teal → gold)
-    Effects.tsx                post-processing (the warp's colour fringing)
-    galaxyFrame.ts             the galaxy's spin and tilt, mirrored from the shader
+    Effects.tsx                bloom, ACES tone mapping, space black, the warp's colour fringing
+    galaxyFrame.ts             the galaxy's spin and orientation, mirrored from the shader
     picking.ts                 hover and tap tests, done on screen
     instanced.ts, materials.ts thin lines and glowing sprites, many per draw call
     skills/SkillStars.tsx      skill stars + constellation lines, with hover labels
@@ -85,33 +88,43 @@ src/
       systemLayout.ts          where each project's star system and planets go
       StarSystems.tsx          stars, orbits and planets; hover and click to warp
     warp/                      hyperspace streaks and the colour-fringing effect
-    shapeGenerators/           one file per shape: text, nebula, constellation, galaxy, burst
+    shapeGenerators/           every shape: sampled from the pictures (index.ts), the name (text.ts), the star field (field.ts)
     shaders/
       particles.vert.glsl      the morph engine (start reading here)
-      particles.frag.glsl      draws each particle as a soft glowing dot
+      particles.frag.glsl      draws each particle: Gaussian core, and spikes for hero stars
       pointer.glsl             cursor gravity, shared by several shaders
       lines.*, sprite.vert, star.frag   constellation lines, orbits and stars
       planet.*                 lit planets with cloud bands and atmosphere
       streak.*, warp.frag      hyperspace streaks and the warp's chromatic aberration
-      backdrop.*.glsl          the sky gradient
       noise.glsl               smooth-noise helpers
 ```
 
 ## How it works
 
+**Two layers.** Each picture is a reference image (`public/textures/`) shown
+twice. The gas is the image itself on a plane — softened, drifting very slowly,
+feathered to black at the edges, and on capable devices on two planes at
+different depths so they shift against each other. The particles are sampled
+from the same image: more where it is brighter, each with its pixel's colour,
+with depth from brightness. 2% are hero stars (some with diffraction spikes),
+13% medium stars and 85% faint dust; a particle keeps its class in every shape.
+
 **The morph.** Every particle stores its position and colour in every shape as
 vertex attributes. JavaScript sends a single number, `uProgress` (0 name,
-1 nebula, 2 constellations, 3 galaxy, 4 burst), and the vertex shader blends
-between the stored shapes. Each particle travels in its own time window with
-its own delay, and is twisted and blown off course by noise mid-flight, so
-morphs look organic and play identically forwards and backwards. The last
-morph is special: the galaxy collapses to a point before bursting outward.
+1 nebula A, 2 nebula B, 3 star field, 4 galaxy, 5 supernova), and the vertex
+shader blends between the stored shapes. Each particle travels in its own time
+window with its own delay, and is twisted and blown off course by noise
+mid-flight, so morphs look organic and play identically forwards and
+backwards. Meanwhile the old picture's gas fades out and the new one's fades in
+(`gasState.ts`). The last morph is special: the galaxy collapses to a point, a
+short flash, then the supernova bursts out of it.
 
 **The scroll.** `useJourney` builds one GSAP timeline for the whole page and
 ScrollTrigger scrubs it with the scrollbar. The timeline only writes plain
-numbers into `rig`; the shader, camera and backdrop read them every frame.
+numbers into `rig`; the shaders and the camera read them every frame.
 Each section is two screens tall, and its text is pinned in place while you
-scroll through it.
+scroll through it. About holds two pictures: nebula A turns into nebula B
+while its text is on screen.
 
 **The warp.** Click a star system (or a project in the list) and `warp.ts`
 animates `rig.warp` from 0 to 1. The camera blends from its scroll pose to a
@@ -126,12 +139,19 @@ the site works out where each star, system and planet lands on screen and
 compares that with the cursor (`picking.ts`). It is cheap, and it matches what
 you see, including the cursor push.
 
-**Colour.** Every shader works in linear light and converts to sRGB itself, so
-the picture is identical with or without post-processing (see `Scene.tsx`).
+**Colour.** Every shader works in linear light, and light may add up past 1.
+The scene is drawn into a high-range image, then `Effects.tsx` blooms the
+brightest light, tone maps it (ACES filmic, so bright gas compresses instead of
+clipping to white), and lays space black (#04050A) underneath.
 
-To tune the feel, change `MOTION`, `SHAPE_LOOK` and `BACKDROP_GRADES` in
-`src/scene/config.ts`, `SYSTEM_LOOK` in `src/scene/projects/systemLayout.ts`,
-`TIMING` in `src/journey/sections.ts`, the poses in `src/scene/cameraPoses.ts`,
+**Quality.** Capable devices get 50,000 particles, two gas planes per picture
+and bloom; phones and low-power devices get 10,000 particles, one gas plane and
+no bloom. The pixel ratio is capped at 1.5 everywhere.
+
+To tune the feel, change `STAGES`, `MOTION` and `SHAPE_LOOK` in
+`src/scene/config.ts`, the per-image looks in `src/look/scenes.ts` (try them in
+the lab), `SYSTEM_LOOK` in `src/scene/projects/systemLayout.ts`, `TIMING` and
+`MORPHS` in `src/journey/sections.ts`, the poses in `src/scene/cameraPoses.ts`,
 and the flight times at the top of `src/journey/warp.ts`.
 
 ## Accessibility
@@ -142,13 +162,19 @@ and the flight times at the top of `src/journey/warp.ts`.
 - Projects open from keyboard-focusable buttons. The panel is a native modal
   dialog: focus moves into it, Tab stays inside, Escape closes it, and focus
   returns to where it was. ← and → step between systems.
-- With *reduced motion* switched on, the Big Bang is skipped and warps cut
+- With *reduced motion* switched on, the pictures are still: no drift, spin or
+  twinkle, the Big Bang is skipped, each picture dissolves into the next
+  instead of flying, the camera cuts rather than glides, and warps cut
   straight to the system with no streaks or colour fringing.
 
 ## Build phases
 
 - [x] **1. Setup + particle morph engine** — name → nebula → galaxy
 - [x] **2. Scroll-driven camera path and all section morphs** — Big Bang intro, constellations, supernova, background grade, nav
-- [x] **3. Constellations, project star systems, warp, project panels** — hover labels, planets per tech, hyperspace streaks + chromatic aberration, glass panel
-- [ ] 4. Explore mode
-- [ ] 5. Postprocessing, sound, loader, mobile fallback, final polish
+- [x] **3. Constellations, project star systems, warp, project panels** — hover labels, planets per tech, hyperspace streaks + chromatic aberration, glass panel (paused for the visual rework; finished in the new look afterwards)
+- Visual rework:
+  - [x] **A. Look lab** — each picture's two-layer look next to its reference (`/lab`)
+  - [x] **B. Looks wired into the scroll** — sampled particle shapes, gas crossfades, HDR + ACES + bloom, space black, tiers, reduced motion
+  - [ ] C. New constellations and the supernova contact section
+- [ ] 4. Explore mode (optional)
+- [ ] 5. Loader, sound (optional), mobile fallback, final polish

@@ -70,7 +70,7 @@ export function SectionHeading({ id, label, children }: SectionHeadingProps) {
   return (
     <>
       <p className="font-mono text-[11px] uppercase tracking-[0.32em] text-white/55">
-        <span className="text-nebula-lavender">{number}</span>
+        <span className="text-ice">{number}</span>
         <span className="mx-3 inline-block h-px w-8 bg-white/30 align-middle" aria-hidden="true" />
         {label}
       </p>

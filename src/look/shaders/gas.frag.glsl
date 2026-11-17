@@ -9,6 +9,8 @@
 //    3. grades it        — contrast, saturation, and a highlight "knee" that
 //                          stops bright gas from burning out to white
 //    4. feathers it      — fades to black toward the edges, so no rectangle shows
+//    5. shades it        — optionally darkens one soft oval (behind the name on
+//                          the intro screen, so the letters stay readable)
 //  (noise.glsl is pasted above this file, for snoise().)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -25,6 +27,8 @@ uniform vec2  uFeather;      // the fade to black starts at .x and is complete a
 uniform float uKnee;         // brightness above which highlights are tamed …
 uniform vec3  uKneeTint;     // … and tinted toward this colour …
 uniform float uKneeAmount;   // … by this much (0 = off)
+uniform vec4  uShade;        // the shaded oval: centre (xy) and radii (zw), in 0..1 image units
+uniform float uShadeAmount;  // how dark it gets in the middle (0 = off)
 
 varying vec2 vUv;
 
@@ -56,6 +60,10 @@ void main() {
   float r = length((vUv - 0.5) * 2.0);
   float mask = 1.0 - smoothstep(uFeather.x, uFeather.y, r);
   mask *= mask;   // a softer, longer fade
+
+  // 5. Shade: darkest in the middle of the oval, fading out softly to its rim.
+  float oval = length((vUv - uShade.xy) / uShade.zw);
+  mask *= 1.0 - uShadeAmount * (1.0 - smoothstep(0.35, 1.0, oval));
 
   // Additive light: the plane adds its glow to whatever is behind it.
   gl_FragColor = vec4(gas * uExposure * uOpacity * mask, 1.0);

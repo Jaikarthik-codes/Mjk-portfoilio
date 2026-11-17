@@ -10,5 +10,4 @@ varying vec4 vColor;
 void main() {
   float edge = 1.0 - smoothstep(0.2, 1.0, abs(vSide));
   gl_FragColor = vec4(vColor.rgb, vColor.a * edge);
-  gl_FragColor = sRGBTransferOETF(gl_FragColor);   // linear light → screen (see Scene.tsx)
 }

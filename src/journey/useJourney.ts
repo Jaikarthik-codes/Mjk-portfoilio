@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, type RefObject } from 'react'
 import { MOTION } from '../scene/config'
 import { useStore } from '../store/useStore'
 import { rig } from './rig'
-import { JOURNEY_END, SECTION_IDS, TIMING } from './sections'
+import { CAMERA_MOVES, JOURNEY_END, MORPHS, SECTION_IDS, TIMING } from './sections'
 
 gsap.registerPlugin(ScrollTrigger)
 // Phones resize the window when the address bar slides away. Without this,
@@ -50,23 +50,15 @@ export function useJourney(mainRef: RefObject<HTMLElement | null>) {
       // This tween spans the whole timeline, which also fixes its total length.
       timeline.to(rig, { journey: JOURNEY_END, duration: JOURNEY_END }, 0)
 
-      // Between each pair of sections: morph the particles and move the camera.
-      for (let section = 0; section < LAST; section++) {
-        timeline.to(
-          rig,
-          { morph: section + 1, duration: TIMING.morphLength, ease: 'sine.inOut' },
-          section + TIMING.morphStart,
-        )
-        timeline.to(
-          rig,
-          { camera: section + 1, duration: TIMING.cameraLength, ease: 'sine.inOut' },
-          section + TIMING.cameraStart,
-        )
-      }
-
-      // Background colour: violet → teal as the constellations form, → gold for the supernova.
-      timeline.to(rig, { grade: 1, duration: 0.6 }, 1.4)
-      timeline.to(rig, { grade: 2, duration: 0.6 }, 3.35)
+      // Morph the particles from shape to shape (the gas fades along with
+      // them, see scene/gasState.ts) …
+      MORPHS.forEach(({ start, length }, shape) => {
+        timeline.to(rig, { morph: shape + 1, duration: length, ease: 'sine.inOut' }, start)
+      })
+      // … and move the camera between each pair of sections.
+      CAMERA_MOVES.forEach(({ start, length }, section) => {
+        timeline.to(rig, { camera: section + 1, duration: length, ease: 'sine.inOut' }, start)
+      })
 
       // Fade each section's text in as it arrives and out as it leaves.
       gsap.utils.toArray<HTMLElement>('[data-section-content]').forEach((text, section) => {

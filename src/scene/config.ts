@@ -1,61 +1,70 @@
 /**
  * Look-and-feel constants for the 3D scene.
  * Everything here is tuning, not content — site text lives in src/data/content.ts.
+ * The colours and the per-image looks live in src/look/ (palette.ts, scenes.ts).
  */
 
 import type { QualityTier } from '../lib/device'
+import type { LookSceneId } from '../look/scenes'
+
+/** Particles and gas planes per quality tier (phones get the lighter one). */
+export const QUALITY: Record<QualityTier, { particles: number; gasLayers: 1 | 2; bloom: boolean }> = {
+  high: { particles: 50_000, gasLayers: 2, bloom: true },
+  low: { particles: 10_000, gasLayers: 1, bloom: false },
+}
 
 /** How many particles each quality tier gets. */
 export const PARTICLE_COUNT: Record<QualityTier, number> = {
-  high: 50_000,
-  low: 10_000,
+  high: QUALITY.high.particles,
+  low: QUALITY.low.particles,
 }
 
 /**
- * The order shapes appear in as the morph progress goes 0 → 1 → 2 → 3 → 4.
- * One shape per scroll section, in the same order as SECTION_IDS.
+ * The shapes the particles take, in scroll order. `rig.morph` counts through
+ * them: 0 the name, 1 nebula A, 2 nebula B, 3 the star field, 4 the galaxy,
+ * 5 the supernova. The About section holds two of them (nebula A, then B).
  * (If you change this list, the #defines at the top of particles.vert.glsl must match.)
  */
-export const SHAPES = ['name', 'nebula', 'constellation', 'galaxy', 'burst'] as const
+export const SHAPES = ['name', 'nebulaA', 'nebulaB', 'field', 'galaxy', 'nova'] as const
 export type ShapeName = (typeof SHAPES)[number]
+export const SHAPE_INDEX: Record<ShapeName, number> = {
+  name: 0,
+  nebulaA: 1,
+  nebulaB: 2,
+  field: 3,
+  galaxy: 4,
+  nova: 5,
+}
 
 /**
- * The cosmic palette. Hex values are sRGB, exactly as you would write them in CSS.
+ * Where each shape's picture comes from and how big it is in the world.
  *
- * These are a little more saturated than the pastels you see on screen: particles
- * are drawn with additive blending, so wherever they overlap the colours add up
- * and drift toward white, which softens them.
+ *   scene  — the reference image (src/look/scenes.ts) its gas and particles come from
+ *   height — height of that image in world units (its width follows the image's shape)
+ *   gas    — how much of the image's gas is shown (1 = as tuned in the look lab)
+ *   gasScale — the gas plane's size relative to `height`
+ *
+ * The star field (Skills) has no picture of its own: it borrows the stardust
+ * gas, faint and enlarged, and its particles are spread out procedurally.
  */
-export const PALETTE = {
-  void: '#05030f',
-  white: '#ffffff',
-  lavender: '#bfa8ff',
-  violet: '#9068ff',
-  indigo: '#5b4be0',
-  pink: '#ff7cc8',
-  rose: '#ffb0da',
-  teal: '#3fe0c8',
-  mint: '#a4ffe9',
-  sky: '#7ab8ff',
-  gold: '#ffcc85',
-  cream: '#fff0d6',
-} as const
-
-/**
- * Background colour for each stage of the journey: violet → teal → gold.
- * `inner` glows softly behind the middle of the screen, `outer` is the edge colour.
- * Keep these very dark — the particles need a near-black sky to glow against.
- */
-export const BACKDROP_GRADES = [
-  { inner: '#1c0d40', outer: '#05030d' }, // violet: intro and about
-  { inner: '#062a30', outer: '#02080b' }, // teal: skills and projects
-  { inner: '#2e1b07', outer: '#0a0503' }, // gold: contact
-] as const
+export const STAGES: Record<ShapeName, { scene: LookSceneId; height: number; gas: number; gasScale: number }> = {
+  name: { scene: 'stardust', height: 11, gas: 0.8, gasScale: 1 },
+  nebulaA: { scene: 'nebulaA', height: 9.5, gas: 1, gasScale: 1 },
+  nebulaB: { scene: 'nebulaB', height: 7, gas: 1, gasScale: 1 },
+  field: { scene: 'stardust', height: 11, gas: 0.12, gasScale: 1.9 },
+  galaxy: { scene: 'galaxy', height: 15, gas: 1, gasScale: 1 },
+  nova: { scene: 'supernova', height: 11, gas: 1, gasScale: 1 },
+}
 
 export const CAMERA = {
   fov: 50,
   near: 0.1,
   far: 300,
+}
+
+/** Distance from which an image of height `height` exactly fills the view's height. */
+export function fillDistance(height: number) {
+  return height / (2 * Math.tan((CAMERA.fov * Math.PI) / 360))
 }
 
 export const TEXT_SHAPE = {
@@ -75,64 +84,58 @@ export const TEXT_SHAPE = {
   stackedMaxHeight: 3.2,
   /** How thick the letters are front-to-back. */
   depth: 0.07,
-  /** Share of particles that float around the letters as loose stardust. */
-  dustRatio: 0.09,
 }
 
-export const NEBULA_SHAPE = {
-  /** Half-size of the cloud along x, y and z. */
-  radii: [8.6, 4.7, 4.2] as const,
+/** The intro: which share of each class of particle spells the name (the rest are stardust). */
+export const NAME_SHAPE = {
+  mediums: 0.4,
+  dust: 0.85,
+  /** Brightness of the letters (linear light, before tone mapping). */
+  brightness: 1.4,
 }
 
 export const CONSTELLATION_SHAPE = {
   /** Space given to each constellation (width, height) on landscape and portrait screens. */
   cell: [6.4, 5.4] as const,
   portraitCell: [5.0, 5.2] as const,
-  /** Share of particles that condense into the stars, and that trace the lines between them. */
-  starRatio: 0.5,
-  lineRatio: 0.14,
+}
+
+/** The Skills star field: calm, dim stars spread well beyond the constellations. */
+export const FIELD_SHAPE = {
+  /** Margin around the constellation field, in world units. */
+  margin: 7,
+  /** How far behind and in front of the constellations the stars spread. */
+  depth: [-10, 2] as const,
+  /** Overall brightness (the field is meant to be quiet). */
+  brightness: 0.55,
 }
 
 export const GALAXY_SHAPE = {
-  radius: 7.2,
-  arms: 2,
-  /** How many times each arm wraps around the core on its way out. */
-  windings: 1.25,
-  /** Share of particles in the central bulge, and in the faint outer disc. */
-  bulgeRatio: 0.17,
-  haloRatio: 0.12,
-  /** Tilt (radians): x leans the disc toward the camera, y rolls it on screen. */
-  tilt: [0.66, -0.24] as const,
-  /** How fast the galaxy turns, in radians per second (one turn every ~2 minutes). */
-  spin: 0.05,
-}
-
-export const BURST_SHAPE = {
-  /** Radius of the bright shock ring. The space inside it is left clear for the contact links. */
-  radius: 4.6,
-  /** Number of streaks flying out from the ring. */
-  rays: 30,
-  /** Share of particles in the ring, and in the rays. The rest is loose debris. */
-  ringRatio: 0.42,
-  rayRatio: 0.38,
+  /** Half the galaxy image's height: the core-to-rim distance in world units. */
+  radius: STAGES.galaxy.height / 2,
+  /**
+   * Orientation (radians). The particle galaxy and the star systems are laid
+   * out flat in the x/z plane; x = π/2 stands that disc up to face the
+   * camera (as in the photo), y would roll it.
+   */
+  tilt: [Math.PI / 2, 0] as const,
+  /** How fast the galaxy turns, in radians per second (one turn every ~13 minutes). */
+  spin: 0.008,
 }
 
 /**
- * Per-shape particle look.
- *   size       — particle diameter in world units
- *   alpha      — particle opacity
+ * Resting motion per shape:
  *   drift      — how far (world units) particles wander while the shape is at rest
  *   driftScale — size of the drift's swirls: small = broad, slow billows; large = fine shimmer
+ * Kept small: the particles sit on the gas and should not wander away from it.
  */
-export const SHAPE_LOOK: Record<
-  ShapeName,
-  { size: number; alpha: number; drift: number; driftScale: number }
-> = {
-  name: { size: 0.05, alpha: 0.4, drift: 0.028, driftScale: 0.9 },
-  nebula: { size: 0.095, alpha: 0.4, drift: 0.42, driftScale: 0.16 },
-  constellation: { size: 0.06, alpha: 0.5, drift: 0.03, driftScale: 0.5 },
-  galaxy: { size: 0.07, alpha: 0.65, drift: 0, driftScale: 0.3 },
-  burst: { size: 0.065, alpha: 0.55, drift: 0.07, driftScale: 0.3 },
+export const SHAPE_LOOK: Record<ShapeName, { drift: number; driftScale: number }> = {
+  name: { drift: 0.02, driftScale: 0.9 },
+  nebulaA: { drift: 0.06, driftScale: 0.35 },
+  nebulaB: { drift: 0.05, driftScale: 0.35 },
+  field: { drift: 0.04, driftScale: 0.3 },
+  galaxy: { drift: 0, driftScale: 0.3 },
+  nova: { drift: 0.05, driftScale: 0.3 },
 }
 
 /** How the particles move. These map one-to-one onto uniforms in particles.vert.glsl. */
@@ -143,8 +146,8 @@ export const MOTION = {
   turbulence: 1.3,
   /** Radians the cloud twists mid-morph. */
   swirl: 0.85,
-  /** 0..1 — strength of the brightness flicker. */
-  twinkle: 0.45,
+  /** 0..1 — how much medium and hero stars shimmer. */
+  twinkle: 0.25,
   /** Furthest the cursor pushes a particle, and how far its influence reaches (1.0 = half the screen height). */
   pointerStrength: 0.05,
   pointerRadius: 0.26,

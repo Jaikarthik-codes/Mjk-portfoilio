@@ -59,7 +59,7 @@ export function SectionNav() {
                     aria-hidden="true"
                     className={`block h-1.5 rounded-full transition-all duration-300 ${
                       active
-                        ? 'w-6 bg-white shadow-[0_0_12px_rgba(191,168,255,0.9)]'
+                        ? 'w-6 bg-white shadow-[0_0_12px_rgba(169,204,255,0.9)]'
                         : 'w-1.5 bg-white/35 group-hover:bg-white/80'
                     }`}
                   />

@@ -2,18 +2,19 @@
 @import '@fontsource-variable/outfit/wght.css';
 @import '@fontsource-variable/jetbrains-mono/wght.css';
 
-/* Design tokens. Tailwind turns these into utilities, e.g. `bg-void`, `text-nebula-pink`, `font-mono`. */
+/* Design tokens. Tailwind turns these into utilities, e.g. `bg-void`, `text-ice`, `font-mono`. */
 @theme {
   --font-sans: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  --color-void: #05030f;
-  --color-nebula-violet: #a685ff;
-  --color-nebula-lavender: #cdbdff;
-  --color-nebula-pink: #ff9fd6;
-  --color-nebula-teal: #5eead4;
-  --color-nebula-sky: #8ec5ff;
-  --color-star-gold: #ffd9a0;
+  /* Space black and the palette of the reference images (src/look/palette.ts). */
+  --color-void: #04050a;
+  --color-ice: #a9ccff;
+  --color-rose: #d8566a;
+  --color-gold: #f3c98b;
+  --color-ember: #e07a3a;
+  --color-sea: #6fbf9f;
+  --color-star: #f4f7ff;
 }
 
 html {
@@ -46,7 +47,7 @@ body {
   position: absolute;
   inset: -3.5rem -4.5rem;
   z-index: -1;
-  /* Near-neutral, so it works over every background grade (violet, teal, gold). */
+  /* Near-neutral, so it works over every section's picture. */
   background: radial-gradient(
     closest-side,
     rgb(2 2 6 / 0.72),
@@ -238,10 +239,10 @@ section[data-active='true'] .interactive {
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    var(--color-nebula-lavender),
-    var(--color-nebula-pink),
-    var(--color-nebula-teal),
-    var(--color-star-gold)
+    var(--color-ice),
+    var(--color-rose),
+    var(--color-sea),
+    var(--color-gold)
   );
 }
 
@@ -250,10 +251,10 @@ section[data-active='true'] .interactive {
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    var(--color-nebula-lavender),
-    var(--color-nebula-pink),
-    var(--color-nebula-teal),
-    var(--color-star-gold)
+    var(--color-ice),
+    var(--color-rose),
+    var(--color-sea),
+    var(--color-gold)
   );
 }
 

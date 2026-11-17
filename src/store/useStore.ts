@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { detectQualityTier, type QualityTier } from '../lib/device'
+import { detectQualityTier, prefersReducedMotion, type QualityTier } from '../lib/device'
 
 /** What the floating label next to a star or planet says. */
 export interface TooltipContent {
@@ -29,6 +29,10 @@ interface StardustState {
   /** Decides the particle count and which effects run. */
   quality: QualityTier
   setQuality: (quality: QualityTier) => void
+
+  /** The visitor has asked for reduced motion: still pictures that dissolve into each other. */
+  calm: boolean
+  setCalm: (calm: boolean) => void
 
   // ── Skills ──────────────────────────────────────────────────────────────────
   // Stars are identified by a key "group:star", e.g. "0:2" is the third skill of the first group.
@@ -77,6 +81,9 @@ export const useStore = create<StardustState>((set) => ({
 
   quality: detectQualityTier(),
   setQuality: (quality) => set({ quality }),
+
+  calm: prefersReducedMotion(),
+  setCalm: (calm) => set({ calm }),
 
   listSkill: null,
   setListSkill: (listSkill) => set({ listSkill }),

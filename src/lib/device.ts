@@ -22,3 +22,10 @@ export function detectQualityTier(): QualityTier {
 
   return (touchFirst && smallScreen) || fewCores || lowMemory || saveData ? 'low' : 'high'
 }
+
+export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
+
+/** True if the visitor has asked their system for reduced motion. */
+export function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia(REDUCED_MOTION_QUERY).matches
+}

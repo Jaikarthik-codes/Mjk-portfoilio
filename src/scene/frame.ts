@@ -1,5 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useStore } from '../store/useStore'
 import { MOTION } from './config'
 import { pointer } from './pointer'
 
@@ -42,7 +43,8 @@ export function FrameTicker() {
   useFrame((state, delta) => {
     // The cap stops everything lurching forward after the tab has been in the background.
     const step = Math.min(delta, 0.1)
-    frameUniforms.uTime.value += step
+    // Reduced motion: the clock stands still, so nothing drifts, spins or twinkles.
+    if (!useStore.getState().calm) frameUniforms.uTime.value += step
 
     frameUniforms.uPixelHeight.value = state.size.height * state.viewport.dpr
     frameUniforms.uAspect.value = state.size.width / state.size.height

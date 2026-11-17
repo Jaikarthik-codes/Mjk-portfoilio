@@ -1,4 +1,4 @@
-import { BURST_SHAPE, GALAXY_SHAPE } from './config'
+import { STAGES } from './config'
 import type { NameLayout } from './nameLayout'
 import type { ConstellationField } from './shapeGenerators/constellationLayout'
 
@@ -32,14 +32,22 @@ export interface CameraPose {
  */
 export const CAMERA_ARCS = [-0.12, 0.1, 0.14, -0.22]
 
-/** One pose per section, in the same order as SECTION_IDS. */
+/**
+ * One pose per section, in the same order as SECTION_IDS.
+ *
+ * Every picture is a photograph on a plane facing the camera, so the camera
+ * looks at each one nearly straight on (a slight angle adds depth to the
+ * particles; a large one would show the gas as a flat card). Most poses fill
+ * the view's height with their picture, as in the look lab.
+ */
 export function getCameraPoses(
   portrait: boolean,
   name: NameLayout,
   field: ConstellationField,
 ): CameraPose[] {
-  const galaxy = GALAXY_SHAPE.radius * 2
-  const ring = BURST_SHAPE.radius * 2
+  const nebula = STAGES.nebulaA.height
+  const galaxy = STAGES.galaxy.height
+  const nova = STAGES.nova.height
 
   // On tall screens the text sits at the bottom, so subjects shift up.
   // On wide screens the text sits on the left, so subjects shift right.
@@ -47,21 +55,21 @@ export function getCameraPoses(
     ? [
         // Intro: the name, straight on.
         { target: [0, 0, 0], azimuth: 0, elevation: 0, frame: [name.width / 0.72, 7], shift: [0, 0.02], roll: 0 },
-        // About: inside the nebula.
-        { target: [0, 0, 0], azimuth: 0.4, elevation: 0.1, frame: [8.5, 11], shift: [0, 0.34], roll: 0.03 },
+        // About: the nebulae, above the text.
+        { target: [0, 0, 0], azimuth: 0.08, elevation: 0.03, frame: [nebula, 11], shift: [0, 0.34], roll: 0.02 },
         // Skills: the whole constellation field.
-        { target: [0, 0, 0], azimuth: -0.1, elevation: 0.05, frame: [field.width + 0.4, field.height + 1], shift: [0, 0.3], roll: 0 },
-        // Projects: pulled back to take in the galaxy.
-        { target: [0, 0, 0], azimuth: -0.2, elevation: 0.16, frame: [galaxy + 3, 10], shift: [0, 0.56], roll: -0.02 },
-        // Contact: the ring, straight on, links in its centre.
-        { target: [0, 0, 0], azimuth: 0, elevation: 0, frame: [ring / 0.9, 12], shift: [0, 0], roll: 0 },
+        { target: [0, 0, 0], azimuth: -0.06, elevation: 0.03, frame: [field.width + 0.4, field.height + 1], shift: [0, 0.3], roll: 0 },
+        // Projects: the galaxy, across the screen's width.
+        { target: [0, 0, 0], azimuth: -0.06, elevation: 0.05, frame: [galaxy * 1.02, 10], shift: [0, 0.4], roll: -0.015 },
+        // Contact: the supernova, straight on, links in its centre.
+        { target: [0, 0, 0], azimuth: 0, elevation: 0, frame: [nova * 1.11, 12], shift: [0, 0], roll: 0 },
       ]
     : [
         { target: [0, 0, 0], azimuth: 0, elevation: 0, frame: [name.width / 0.58, 7], shift: [0, 0.02], roll: 0 },
-        { target: [0, 0, 0], azimuth: 0.5, elevation: 0.12, frame: [13.5, 9.5], shift: [0.36, 0], roll: 0.04 },
-        { target: [0, 0, 0], azimuth: -0.14, elevation: 0.06, frame: [field.width + 1.5, field.height + 4.2], shift: [0, 0.16], roll: 0 },
-        { target: [0, 0, 0], azimuth: -0.28, elevation: 0.2, frame: [galaxy / 0.56, 12], shift: [0.4, 0.02], roll: -0.03 },
-        { target: [0, 0, 0], azimuth: 0, elevation: 0, frame: [ring / 0.6, ring / 0.74], shift: [0, 0], roll: 0 },
+        { target: [0, 0, 0], azimuth: 0.1, elevation: 0.04, frame: [nebula * 1.42, nebula], shift: [0.36, 0], roll: 0.02 },
+        { target: [0, 0, 0], azimuth: -0.06, elevation: 0.03, frame: [field.width + 1.5, field.height + 4.2], shift: [0, 0.16], roll: 0 },
+        { target: [0, 0, 0], azimuth: -0.08, elevation: 0.06, frame: [galaxy / 0.56, galaxy], shift: [0.4, 0.02], roll: -0.02 },
+        { target: [0, 0, 0], azimuth: 0, elevation: 0, frame: [nova * 1.39, nova * 1.13], shift: [0, 0], roll: 0 },
       ]
 }
 

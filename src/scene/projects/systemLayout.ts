@@ -1,7 +1,9 @@
 import * as THREE from 'three'
 import type { Project } from '../../data/content'
 import { hash01 } from '../../lib/hash'
-import { GALAXY_SHAPE, PALETTE } from '../config'
+import { LOOK_PALETTE } from '../../look/palette'
+import { LOOK_SCENES } from '../../look/scenes'
+import { SHAPE_INDEX, STAGES } from '../config'
 import { getGalaxyMatrix } from '../galaxyFrame'
 
 /** One planet: one technology used in the project. */
@@ -34,23 +36,43 @@ export interface SystemLayout {
 
 const TAU = Math.PI * 2
 const STAR_COLOURS = [
-  PALETTE.gold,
-  PALETTE.rose,
-  PALETTE.mint,
-  PALETTE.sky,
-  PALETTE.lavender,
-  PALETTE.pink,
-  PALETTE.teal,
+  LOOK_PALETTE.gold,
+  LOOK_PALETTE.ice,
+  LOOK_PALETTE.rose,
+  LOOK_PALETTE.seaGreen,
+  LOOK_PALETTE.white,
+  LOOK_PALETTE.ember,
 ]
 const PLANET_COLOURS = [
-  PALETTE.lavender,
-  PALETTE.pink,
-  PALETTE.teal,
-  PALETTE.sky,
-  PALETTE.gold,
-  PALETTE.mint,
-  PALETTE.rose,
-  PALETTE.violet,
+  LOOK_PALETTE.ice,
+  LOOK_PALETTE.rose,
+  LOOK_PALETTE.seaGreen,
+  LOOK_PALETTE.gold,
+  LOOK_PALETTE.ember,
+  LOOK_PALETTE.white,
+]
+
+/**
+ * Spots on the spiral arms of the galaxy picture (galaxy.jpg) where star
+ * systems go, as fractions of the image: (0, 0) is its top left corner.
+ * Each is the brightest point of an arm at a different distance from the core
+ * (found by blurring the image and searching rings around the centre). They
+ * are listed in the order systems take them, so the first few are spread
+ * around the galaxy. There is room for 12 projects.
+ */
+const ARM_SLOTS: [number, number][] = [
+  [0.6615, 0.3967],
+  [0.4067, 0.7364],
+  [0.2372, 0.4228],
+  [0.6666, 0.2471],
+  [0.2524, 0.7626],
+  [0.5444, 0.3414],
+  [0.5332, 0.8232],
+  [0.3708, 0.318],
+  [0.4908, 0.6347],
+  [0.57, 0.1625],
+  [0.832, 0.6807],
+  [0.6834, 0.8532],
 ]
 
 export const SYSTEM_LOOK = {
@@ -69,23 +91,19 @@ export const SYSTEM_LOOK = {
 }
 
 /**
- * Places one star system per project along the galaxy's spiral arms, from the
- * inner galaxy outward, alternating arms, and gives each system one planet per
- * technology. Deterministic: the same projects always give the same galaxy.
+ * Places one star system per project on the galaxy's spiral arms (ARM_SLOTS),
+ * and gives each system one planet per technology. Deterministic: the same
+ * projects always give the same galaxy.
  */
 export function layoutSystems(projects: Project[]): SystemLayout[] {
-  const { radius, arms, windings } = GALAXY_SHAPE
-  const count = projects.length
+  const height = STAGES.galaxy.height
+  const width = height * LOOK_SCENES.find((scene) => scene.id === STAGES.galaxy.scene)!.aspect
 
   return projects.map((project, index) => {
-    // How far out along an arm: 0 = core, 1 = rim. Spread evenly from 0.34 to 0.84.
-    const t = 0.34 + 0.5 * (count === 1 ? 0.5 : index / (count - 1))
-    const r = 0.45 + t * (radius - 0.45)
-    // The same logarithmic spiral the galaxy's arms follow (shapeGenerators/galaxy.ts),
-    // nudged a little ahead of the arm so the system sits beside its brightest ridge.
-    const armStart = ((index % arms) / arms) * TAU
-    const angle = armStart + windings * TAU * (Math.log(1 + 3 * t) / Math.log(4)) + 0.16
-    const center = new THREE.Vector3(Math.cos(angle) * r, 0, Math.sin(angle) * r)
+    // From the picture to the galaxy's flat frame (x/z, see galaxyFrame.ts):
+    // image x → x, image y (downward) → z.
+    const [u, v] = ARM_SLOTS[index % ARM_SLOTS.length]
+    const center = new THREE.Vector3((u - 0.5) * width, 0, (v - 0.5) * height)
 
     const planets = project.tech.map((tech, k): PlanetLayout => {
       const n = project.tech.length
@@ -139,7 +157,9 @@ export function planetWorldPosition(
 
 /** How visible the star systems are, from the particle morph: only while the galaxy has formed. */
 export function galaxyVisibility(morph: number): number {
+  const galaxy = SHAPE_INDEX.galaxy
   return (
-    THREE.MathUtils.smoothstep(morph, 2.82, 2.99) * (1 - THREE.MathUtils.smoothstep(morph, 3.02, 3.14))
+    THREE.MathUtils.smoothstep(morph, galaxy - 0.18, galaxy - 0.01) *
+    (1 - THREE.MathUtils.smoothstep(morph, galaxy + 0.02, galaxy + 0.14))
   )
 }

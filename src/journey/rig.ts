@@ -10,12 +10,13 @@
 export const rig = {
   /** Raw scroll position, one unit per section (0 … JOURNEY_END). */
   journey: 0,
-  /** Which shape the particles form: 0 name, 1 nebula, 2 constellations, 3 galaxy, 4 burst. */
+  /**
+   * Which shape the particles (and the gas) form: 0 the name, 1 nebula A,
+   * 2 nebula B, 3 the Skills star field, 4 the galaxy, 5 the supernova.
+   */
   morph: 0,
-  /** Which camera pose is in use, on the same 0–4 scale. */
+  /** Which camera pose is in use: one per section, 0 (intro) … 4 (contact). */
   camera: 0,
-  /** Background colour: 0 violet, 1 teal, 2 gold. */
-  grade: 0,
   /** The opening Big Bang, 0 → 1. Plays once on load; it is not tied to scroll. */
   intro: 0,
 

@@ -2,13 +2,13 @@ import { content } from '../../data/content'
 import { useStore } from '../../store/useStore'
 import { SectionHeading, SectionShell } from './SectionShell'
 
-/** One colour per constellation, in the same order as HUES in shapeGenerators/constellation.ts. */
+/** One colour per constellation, in the same order as GROUP_COLOURS in scene/skills/SkillStars.tsx. */
 const GROUP_COLOURS = [
-  'text-nebula-lavender',
-  'text-nebula-pink',
-  'text-nebula-teal',
-  'text-nebula-sky',
-  'text-star-gold',
+  'text-ice',
+  'text-gold',
+  'text-sea',
+  'text-rose',
+  'text-star',
 ]
 
 /**

@@ -5,7 +5,7 @@ import { rig } from '../../journey/rig'
 import { createRng } from '../../lib/random'
 import { useStore } from '../../store/useStore'
 import { warpView } from '../CameraRig'
-import { PALETTE } from '../config'
+import { LOOK_PALETTE } from '../../look/palette'
 import { frameUniforms } from '../frame'
 import streakFragment from '../shaders/streak.frag.glsl?raw'
 import streakVertex from '../shaders/streak.vert.glsl?raw'
@@ -30,7 +30,7 @@ export function WarpStreaks() {
     geometry.setIndex([0, 2, 1, 1, 2, 3])
 
     const rng = createRng(909)
-    const palette = [PALETTE.white, PALETTE.lavender, PALETTE.lavender, PALETTE.sky, PALETTE.mint, PALETTE.rose].map(
+    const palette = [LOOK_PALETTE.white, LOOK_PALETTE.white, LOOK_PALETTE.ice, LOOK_PALETTE.ice, LOOK_PALETTE.gold, LOOK_PALETTE.rose].map(
       (hex) => new THREE.Color(hex),
     )
     const seed = new Float32Array(count * 4)

@@ -62,7 +62,7 @@ export function ProjectsSection() {
                     <span className={`transition-colors ${active ? 'text-white' : 'text-white/90'}`}>{project.title}</span>
                     <span
                       aria-hidden="true"
-                      className={`text-nebula-lavender transition-[opacity,transform] duration-300 ${
+                      className={`text-ice transition-[opacity,transform] duration-300 ${
                         active ? 'translate-x-0 opacity-100' : '-translate-x-1 opacity-0'
                       }`}
                     >

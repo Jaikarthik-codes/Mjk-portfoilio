@@ -13,5 +13,4 @@ void main() {
   float edge = 1.0 - smoothstep(0.15, 1.0, abs(vSide));
   vec3 color = mix(vColor, vec3(1.0), vAlong * 0.6);  // white-hot at the very front
   gl_FragColor = vec4(color, trail * edge * vAlpha);
-  gl_FragColor = sRGBTransferOETF(gl_FragColor);      // linear light → screen (see Scene.tsx)
 }
