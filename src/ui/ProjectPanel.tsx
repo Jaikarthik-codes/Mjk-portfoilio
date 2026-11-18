@@ -117,6 +117,20 @@ export function ProjectPanel() {
           {project.description}
         </p>
 
+        {project.built && (
+          <>
+            <h3 className="mt-6 font-mono text-[10px] uppercase tracking-[0.3em] text-white/50">What I built</h3>
+            <ul className="mt-2 space-y-1.5 text-[15px] font-light leading-snug text-white/80">
+              {project.built.map((line) => (
+                <li key={line} className="flex gap-2.5">
+                  <span aria-hidden="true" className="mt-[0.55em] size-1 shrink-0 rounded-full bg-ice/80" />
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
         <h3 className="mt-7 font-mono text-[10px] uppercase tracking-[0.3em] text-white/50">
           Planets in this system
         </h3>
@@ -144,7 +158,7 @@ export function ProjectPanel() {
           })}
         </ul>
 
-        {(project.liveUrl || project.githubUrl) && (
+        {(project.liveUrl || project.githubUrl || project.docsUrl) && (
           <div className="mt-7 flex flex-wrap gap-3">
             {project.liveUrl && (
               <PanelLink href={project.liveUrl} primary>
@@ -152,6 +166,7 @@ export function ProjectPanel() {
               </PanelLink>
             )}
             {project.githubUrl && <PanelLink href={project.githubUrl}>View source</PanelLink>}
+            {project.docsUrl && <PanelLink href={project.docsUrl}>API docs</PanelLink>}
           </div>
         )}
 

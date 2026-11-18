@@ -6,7 +6,7 @@ import { createGasMaterial } from '../look/GasLayer'
 import { LOOK_SCENES } from '../look/scenes'
 import type { ReferenceImages } from '../look/useReferenceImage'
 import { useStore } from '../store/useStore'
-import { GALAXY_SHAPE, QUALITY, SHAPE_INDEX, SHAPES, STAGES, type ShapeName } from './config'
+import { GALAXY_SHAPE, QUALITY, SHAPE_INDEX, SHAPES, stageOffset, STAGES, type ShapeName } from './config'
 import { clock, frameUniforms } from './frame'
 import { gasState } from './gasState'
 import { getNameLayout } from './nameLayout'
@@ -17,6 +17,8 @@ const FAR_PLANE = 3.2
 const FIELD_BLUR = 2.4
 /** How much the gas behind the name is darkened, so the letters stay readable. */
 const NAME_SHADE = 0.58
+/** The same behind the contact links, in the middle of the supernova. */
+const LINKS_SHADE = 0.4
 
 interface Stage {
   shape: ShapeName
@@ -24,6 +26,8 @@ interface Stage {
   height: number
   /** How much of the image's gas is shown (STAGES in config.ts). */
   strength: number
+  /** Where the picture sits (see stageOffset in config.ts). */
+  offset: [number, number]
   near: THREE.ShaderMaterial
   far: THREE.ShaderMaterial | null
 }
@@ -54,6 +58,7 @@ export function GasStack({ references }: { references: ReferenceImages }) {
           width: stage.height * scene.aspect * stage.gasScale,
           height: stage.height * stage.gasScale,
           strength: stage.gas,
+          offset: stageOffset(shape, scene.aspect),
           near: createGasMaterial(texture, scene.gas, { blur: nearBlur, seed: 3 + i, time }),
           far: layers === 2 ? createGasMaterial(texture, scene.gas, { blur: scene.gas.blur[1], seed: 11 + i, time }) : null,
         }
@@ -84,6 +89,15 @@ export function GasStack({ references }: { references: ReferenceImages }) {
       stage.far.uniforms.uShade.value.copy(stage.near.uniforms.uShade.value)
       stage.far.uniforms.uShadeAmount.value = NAME_SHADE
     }
+
+    // … and the supernova's, around its focus point, behind the contact links.
+    const nova = stages[SHAPE_INDEX.nova]
+    const focus = STAGES.nova.focus ?? [0.5, 0.5]
+    for (const material of [nova.near, nova.far]) {
+      // (Texture coordinates run from the bottom up, so the focus's y flips.)
+      material?.uniforms.uShade.value.set(focus[0], 1 - focus[1], 0.27, 0.28)
+      if (material) material.uniforms.uShadeAmount.value = LINKS_SHADE
+    }
   }, [stages, portrait])
 
   const groups = useRef<(THREE.Group | null)[]>([])
@@ -108,6 +122,8 @@ export function GasStack({ references }: { references: ReferenceImages }) {
       if (!group.visible) return
 
       group.scale.setScalar(scale)
+      // Grow and shrink about the centre of the world (where the supernova flashes).
+      group.position.set(stage.offset[0] * scale, stage.offset[1] * scale, 0)
       // The galaxy turns with its particles and star systems (see galaxyFrame.ts).
       if (stage.shape === 'galaxy') group.rotation.z = -clock.time * GALAXY_SHAPE.spin
       // Two planes carry 0.8 + 0.28 of the gas; one on its own carries a little more (as tuned in the lab).

@@ -28,8 +28,15 @@ export interface ParticleLayout {
   mediums: number
 }
 
+/**
+ * Above this many particles, the extra ones are all dust: there are only so
+ * many stars in a picture, and more dust just makes the gas finer.
+ */
+export const STAR_CLASS_LIMIT = 50_000
+
 export function createLayout(count: number): ParticleLayout {
-  return { count, heroes: Math.round(count * 0.02), mediums: Math.round(count * 0.13) }
+  const stars = Math.min(count, STAR_CLASS_LIMIT)
+  return { count, heroes: Math.round(stars * 0.02), mediums: Math.round(stars * 0.13) }
 }
 
 /**
@@ -147,6 +154,8 @@ export interface SampleOptions {
 export function sampleImage(pixels: ImagePixels, layout: ParticleLayout, options: SampleOptions): SampledShape {
   const { width: W, height: H, rgb, luma } = pixels
   const { look, rng } = options
+  // Distances below are tuned for a 512 px image; scale them for finer reads.
+  const unit = Math.max(W, H) / 512
   const shape: SampledShape = {
     positions: new Float32Array(layout.count * 3),
     colors: new Float32Array(layout.count * 3),
@@ -159,12 +168,12 @@ export function sampleImage(pixels: ImagePixels, layout: ParticleLayout, options
 
   // "Starness": how much brighter a pixel is than its surroundings. Stars and
   // sharp filaments score high; broad gas scores low.
-  const surroundings = boxBlur(luma, W, H, 12)
+  const surroundings = boxBlur(luma, W, H, Math.round(12 * unit))
   const starness = new Float32Array(W * H)
   for (let p = 0; p < W * H; p++) starness[p] = Math.max(0, luma[p] - surroundings[p])
 
   // ── Heroes: on the image's own stars ──────────────────────────────────────
-  const peaks = findPeaks(starness, luma, W, H, layout.heroes, bright * 0.02)
+  const peaks = findPeaks(starness, luma, W, H, layout.heroes, bright * 0.02, unit)
   const topPeak = peaks.length > 0 ? peaks[0].score : 1
 
   // ── Weighted pixel picking ────────────────────────────────────────────────
@@ -371,8 +380,16 @@ function boxBlur(values: Float32Array, W: number, H: number, radius: number): Fl
  * No two are allowed within a few pixels, so a bright clump of gas yields one
  * star, not a cluster of them.
  */
-function findPeaks(starness: Float32Array, luma: Float32Array, W: number, H: number, limit: number, threshold: number) {
-  const flux = boxBlur(starness, W, H, 2)
+function findPeaks(
+  starness: Float32Array,
+  luma: Float32Array,
+  W: number,
+  H: number,
+  limit: number,
+  threshold: number,
+  unit = 1,
+) {
+  const flux = boxBlur(starness, W, H, Math.round(2 * unit))
   const peaks: { pixel: number; score: number }[] = []
   for (let y = 1; y < H - 1; y++) {
     for (let x = 1; x < W - 1; x++) {
@@ -393,7 +410,7 @@ function findPeaks(starness: Float32Array, luma: Float32Array, W: number, H: num
   peaks.sort((a, b) => b.score - a.score)
 
   // Keep the strongest, then skip anything too close to one already kept.
-  const SPACING = 8
+  const SPACING = Math.round(8 * unit)
   const taken = new Uint8Array(W * H)
   const kept: typeof peaks = []
   for (const peak of peaks) {

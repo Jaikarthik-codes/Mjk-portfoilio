@@ -24,6 +24,10 @@ export interface Project {
   tech: string[]
   liveUrl?: string
   githubUrl?: string
+  /** Link to the project's API documentation. */
+  docsUrl?: string
+  /** Two short lines on what you built yourself, shown in the project panel. */
+  built?: [string, string]
 }
 
 export interface Content {
@@ -38,6 +42,8 @@ export interface Content {
     github: string
     linkedin: string
   }
+  /** Your resume, offered from the navigation on every screen. Put the file in public/. */
+  resume: { url: string; fileName: string }
   /** Shown on the secret planet's "about me" card in explore mode. */
   hobbies: string[]
   /** Navigation labels and headings for each scroll section. */
@@ -85,6 +91,11 @@ export const content: Content = {
       tech: ['React', 'TypeScript', 'Node.js'],
       liveUrl: 'https://example.com',
       githubUrl: 'https://github.com/your-handle/project-one',
+      docsUrl: 'https://example.com/docs',
+      built: [
+        'Designed and built the front end and the API it talks to.',
+        'Cut page load time in half with server rendering and caching.',
+      ],
     },
     {
       id: 'project-two',
@@ -92,6 +103,11 @@ export const content: Content = {
       description: 'A short description of what this project does and why it matters.',
       tech: ['Python', 'PostgreSQL', 'Docker'],
       githubUrl: 'https://github.com/your-handle/project-two',
+      docsUrl: 'https://example.com/docs',
+      built: [
+        'Modelled the data and wrote the REST API and its tests.',
+        'Packaged it in Docker with a one-command local setup.',
+      ],
     },
     {
       id: 'project-three',
@@ -99,6 +115,10 @@ export const content: Content = {
       description: 'A short description of what this project does and why it matters.',
       tech: ['Three.js', 'GLSL', 'Vite'],
       liveUrl: 'https://example.com',
+      built: [
+        'Wrote the shaders and the scene from scratch.',
+        'Kept it at 60 fps on mid-range phones.',
+      ],
     },
   ],
 
@@ -108,6 +128,9 @@ export const content: Content = {
     github: 'https://github.com/your-handle',
     linkedin: 'https://www.linkedin.com/in/your-handle',
   },
+
+  // TODO: replace public/resume.pdf with your own (it is a placeholder).
+  resume: { url: '/resume.pdf', fileName: 'Jai-Karthik-resume.pdf' },
 
   // TODO
   hobbies: ['Stargazing', 'Photography', 'Chess', 'Sci-fi novels'],

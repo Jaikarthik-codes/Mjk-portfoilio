@@ -1,5 +1,6 @@
 import gsap from 'gsap'
 import { content } from '../data/content'
+import { playCue } from '../features/audio'
 import { useStore } from '../store/useStore'
 import { rig } from './rig'
 
@@ -46,6 +47,7 @@ export function openProject(index: number) {
 
   flight?.kill()
   lockScroll(true)
+  playCue('warp-in')
   rig.hopFrom = rig.hopTo = index
   rig.hop = 1
   useStore.setState({ activeProject: index, panelProject: index, panelVisible: false })
@@ -70,6 +72,7 @@ function hopTo(index: number) {
   const store = useStore.getState()
   if (index === store.activeProject || isInFlight()) return
 
+  playCue('hop')
   rig.hopFrom = store.activeProject ?? index
   rig.hopTo = index
   rig.hop = 0
@@ -102,6 +105,7 @@ export function closeProject() {
   const store = useStore.getState()
   if (store.activeProject === null) return
 
+  playCue('warp-out')
   // The panel goes at once, so the page is usable again while the camera returns.
   useStore.setState({ panelProject: null, panelVisible: false, listPlanet: null })
 

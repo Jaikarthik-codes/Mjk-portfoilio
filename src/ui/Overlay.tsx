@@ -16,7 +16,9 @@ export function Overlay() {
   useJourney(main)
 
   return (
-    <main ref={main} className="relative z-10">
+    // overflow-x: clip keeps the text scrims (which reach past their text) from
+    // widening the page on phones; unlike `hidden`, it leaves position: sticky working.
+    <main ref={main} className="relative z-10 overflow-x-clip">
       <IntroSection />
       <AboutSection />
       <SkillsSection />

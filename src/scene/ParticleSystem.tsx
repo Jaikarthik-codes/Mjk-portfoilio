@@ -1,9 +1,10 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
 import { content } from '../data/content'
 import { rig } from '../journey/rig'
 import { createRng } from '../lib/random'
+import { createLayout, STAR_CLASS_LIMIT } from '../look/sampleImage'
 import type { ReferenceImages } from '../look/useReferenceImage'
 import { useStore } from '../store/useStore'
 import { cameraView, warpView } from './CameraRig'
@@ -38,30 +39,46 @@ export function ParticleSystem({ references }: { references: ReferenceImages }) 
   const nameLayout = useMemo(() => getNameLayout(portrait), [portrait])
   const field = useMemo(() => layoutConstellations(content.skills, portrait), [portrait])
 
-  const built = useMemo(
-    () =>
-      buildShapes(count, {
-        references,
-        name: nameLayout,
-        constellations: field,
-        fieldDistance: fillDistance(STAGES.field.height),
-      }),
-    [count, references, nameLayout, field],
-  )
-  const geometry = useMemo(() => createGeometry(built), [built])
+  // Building the shapes takes a moment, so it happens in the background. The
+  // old shapes stay on screen until the new ones are ready (e.g. after the
+  // screen turns), and the Big Bang waits for the first ones (particlesReady).
+  const [built, setBuilt] = useState<ParticleShapes | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    buildShapes(count, {
+      references,
+      name: nameLayout,
+      constellations: field,
+      fieldDistance: fillDistance(STAGES.field.height),
+    }).then((shapes) => {
+      if (cancelled) return
+      setBuilt(shapes)
+      useStore.getState().setParticlesReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [count, references, nameLayout, field])
+  const geometry = useMemo(() => (built ? createGeometry(built) : null), [built])
   const material = useMemo(() => createMaterial(gl), [gl])
 
   // Free GPU memory when the geometry is replaced or the component goes away.
-  useEffect(() => () => geometry.dispose(), [geometry])
+  useEffect(() => () => geometry?.dispose(), [geometry])
   useEffect(() => () => material.dispose(), [material])
 
   // Uniforms that depend on the particle count or the layout.
   useEffect(() => {
+    if (!built) return
     // With fewer particles each one has to carry more light, or the shapes look thin.
-    material.uniforms.uExposure.value = Math.pow(PARTICLE_COUNT.high / count, 0.25)
+    // With more (ultra), the extra ones are all dust, sharing the same light between them.
+    const { layout } = built
+    const base = createLayout(Math.min(layout.count, STAR_CLASS_LIMIT))
+    material.uniforms.uExposure.value = Math.pow(PARTICLE_COUNT.high / base.count, 0.25)
+    material.uniforms.uDustExposure.value =
+      (base.count - base.heroes - base.mediums) / (layout.count - layout.heroes - layout.mediums)
     material.uniforms.uNameWidth.value = nameLayout.width
     material.uniforms.uFieldWidth.value = field.width
-  }, [material, count, nameLayout, field])
+  }, [material, nameLayout, field, built])
 
   useFrame((state) => {
     const uniforms = material.uniforms
@@ -84,6 +101,7 @@ export function ParticleSystem({ references }: { references: ReferenceImages }) 
 
   // frustumCulled={false}: three.js would otherwise hide the whole cloud based on
   // the name's bounding box, but the shader moves the points far outside it.
+  if (!geometry) return null
   return <points geometry={geometry} material={material} frustumCulled={false} />
 }
 
@@ -163,6 +181,7 @@ function createMaterial(gl: THREE.WebGLRenderer): THREE.ShaderMaterial {
       uGalaxySpin: { value: GALAXY_SHAPE.spin },
       uGalaxyTilt: { value: new THREE.Vector2(...GALAXY_SHAPE.tilt) },
       uExposure: { value: 1 },
+      uDustExposure: { value: 1 },
       uRefDepth: { value: 12 },
       uSpikeLength: { value: 46 },
       uMaxPointSize: { value: range?.[1] ?? 64 },

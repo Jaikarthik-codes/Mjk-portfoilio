@@ -54,6 +54,7 @@ uniform float uGalaxySpin;                    // how fast the galaxy turns (radi
 uniform vec2  uGalaxyTilt;                    // x = stand the flat disc up, y = roll (radians)
 uniform float uPixelRatio;                    // device pixels per CSS pixel
 uniform float uExposure;                      // overall particle brightness (fewer particles → each a little brighter)
+uniform float uDustExposure;                  // dust's share of it (more dust → each grain dimmer, same total light)
 uniform float uRefDepth;                      // camera distance at which stars are exactly their design size
 uniform float uSpikeLength;                   // longest diffraction spike arm, CSS pixels
 uniform float uMaxPointSize;                  // the GPU's largest point
@@ -302,6 +303,7 @@ void main() {
 
   // ── 7. Brightness ──────────────────────────────────────────────────────────
   float alpha = opacity * dim * uExposure * dissolve;
+  if (kind < 0.5) alpha *= uDustExposure;
 
   // Medium stars and heroes shimmer gently, each at its own pace. Dust does not.
   if (kind > 0.5) alpha *= 1.0 - uTwinkle * (0.5 + 0.5 * sin(uTime * (0.7 + 2.0 * seed) + seed * 40.0));

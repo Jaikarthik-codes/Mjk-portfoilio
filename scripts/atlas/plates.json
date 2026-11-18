@@ -1,0 +1,190 @@
+{
+  "orion": {
+    "file": "orion.jpg",
+    "picks": {
+      "Betelgeuse": [
+        0.293,
+        0.437
+      ],
+      "Bellatrix": [
+        0.572,
+        0.47
+      ],
+      "Mintaka": [
+        0.506,
+        0.635
+      ],
+      "Alnilam": [
+        0.454,
+        0.662
+      ],
+      "Alnitak": [
+        0.409,
+        0.685
+      ],
+      "Rigel": [
+        0.654,
+        0.848
+      ],
+      "Saiph": [
+        0.359,
+        0.88
+      ],
+      "Meissa": [
+        0.473,
+        0.38
+      ]
+    },
+    "crop": "0.03,0.04,0.97,0.945",
+    "erase": "0.74,0.04,0.92,0.19;0.04,0.05,0.14,0.21;0.46,0.06,0.95,0.285;0.03,0.36,0.11,0.83",
+    "source": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Sidney_Hall_-_Urania%27s_Mirror_-_Orion_%28best_currently_available_version_-_2014%29.jpg"
+  },
+  "ursa-major": {
+    "file": "ursa-major.jpg",
+    "picks": {
+      "Dubhe": [
+        0.522,
+        0.31
+      ],
+      "Merak": [
+        0.519,
+        0.417
+      ],
+      "Phecda": [
+        0.416,
+        0.469
+      ],
+      "Megrez": [
+        0.398,
+        0.401
+      ],
+      "Alioth": [
+        0.322,
+        0.414
+      ],
+      "Mizar": [
+        0.257,
+        0.432
+      ],
+      "Alkaid": [
+        0.157,
+        0.525
+      ]
+    },
+    "crop": "0.1,0.1,0.9,0.92",
+    "erase": "0.5,0.79,0.82,0.9;0.1,0.58,0.335,0.95;0.1,0.08,0.47,0.33;0.45,0.05,0.95,0.13;0.86,0.13,0.95,0.6",
+    "source": "https://upload.wikimedia.org/wikipedia/commons/2/28/Sidney_Hall_-_Urania%27s_Mirror_-_Ursa_Major.jpg"
+  },
+  "cassiopeia": {
+    "file": "cassiopeia.png",
+    "picks": {
+      "Schedar": [
+        0.486,
+        0.409
+      ],
+      "Caph": [
+        0.315,
+        0.502
+      ],
+      "Navi": [
+        0.555,
+        0.573
+      ],
+      "Ruchbah": [
+        0.7,
+        0.583
+      ],
+      "Segin": [
+        0.763,
+        0.712
+      ]
+    },
+    "crop": "0.1,0.1,0.95,0.88",
+    "erase": "0.85,0.2,0.94,0.78;0.62,0.03,0.95,0.3;0.1,0.1,0.21,0.33",
+    "source": "https://upload.wikimedia.org/wikipedia/commons/7/72/Sidney_Hall_-_Urania%27s_Mirror_-_Cassiopeia_%28image_right_side_up%29.png"
+  },
+  "cygnus": {
+    "file": "cygnus.jpg",
+    "picks": {
+      "Deneb": [
+        0.497,
+        0.414
+      ],
+      "Sadr": [
+        0.546,
+        0.51
+      ],
+      "Aljanah": [
+        0.469,
+        0.628
+      ],
+      "Albireo": [
+        0.72,
+        0.712
+      ]
+    },
+    "crop": "0.28,0.075,0.765,0.76",
+    "erase": "0.28,0.06,0.55,0.17",
+    "source": "https://upload.wikimedia.org/wikipedia/commons/7/76/Sidney_Hall_-_Urania%27s_Mirror_-_Lacerta%2C_Cygnus%2C_Lyra%2C_Vulpecula_and_Anser.jpg"
+  },
+  "leo": {
+    "file": "leo.png",
+    "picks": {
+      "Regulus": [
+        0.624,
+        0.632
+      ],
+      "Denebola": [
+        0.114,
+        0.596
+      ],
+      "Zosma": [
+        0.292,
+        0.504
+      ],
+      "Algieba": [
+        0.564,
+        0.514
+      ],
+      "Chertan": [
+        0.289,
+        0.577
+      ]
+    },
+    "crop": "0.04,0.39,0.97,0.92",
+    "erase": "0.47,0.74,0.85,0.81;0.88,0.4,0.97,0.66;0.02,0.6,0.08,0.92;0.04,0.27,0.13,0.5;0.45,0.85,0.8,0.95",
+    "source": "https://upload.wikimedia.org/wikipedia/commons/7/7c/Sidney_Hall_-_Urania%27s_Mirror_-_Leo_Major_and_Leo_Minor.png"
+  },
+  "scorpius": {
+    "file": "scorpius.jpg",
+    "picks": {
+      "Antares": [
+        0.515,
+        0.511
+      ],
+      "Paikauhale": [
+        0.4725,
+        0.539
+      ],
+      "Alniyat": [
+        0.5825,
+        0.478
+      ],
+      "Dschubba": [
+        0.7265,
+        0.409
+      ],
+      "Fang": [
+        0.755,
+        0.474
+      ],
+      "Acrab": [
+        0.6775,
+        0.3385
+      ]
+    },
+    "crop": "0.04,0.04,0.96,0.96",
+    "erase": "0.36,0.03,0.6,0.09;0.06,0.06,0.3,0.31;0.7,0.06,0.88,0.26;0.04,0.31,0.27,0.71;0.74,0.66,0.93,0.83;0.42,0.9,0.7,0.97;0.04,0.92,0.18,0.97",
+    "source": "https://upload.wikimedia.org/wikipedia/commons/c/cf/Sidney_Hall_-_Urania%27s_Mirror_-_Scorpio.jpg"
+  }
+}

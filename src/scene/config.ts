@@ -7,14 +7,29 @@
 import type { QualityTier } from '../lib/device'
 import type { LookSceneId } from '../look/scenes'
 
-/** Particles and gas planes per quality tier (phones get the lighter one). */
-export const QUALITY: Record<QualityTier, { particles: number; gasLayers: 1 | 2; bloom: boolean }> = {
-  high: { particles: 50_000, gasLayers: 2, bloom: true },
-  low: { particles: 10_000, gasLayers: 1, bloom: false },
+/**
+ * What each quality tier draws (see detectQualityTier in lib/device.ts):
+ *   particles  — how many
+ *   gasLayers  — gas planes per picture (2 = near and far, for parallax)
+ *   bloom      — the soft glow around the brightest light
+ *   pixelRatio — the most screen pixels drawn per CSS pixel
+ *   sampleSize — how finely the pictures are read when placing particles (px)
+ *
+ * Ultra's extra particles are all fine dust: the same light spread over three
+ * times as many grains, so the gas's structure comes out finer and smoother.
+ */
+export const QUALITY: Record<
+  QualityTier,
+  { particles: number; gasLayers: 1 | 2; bloom: boolean; pixelRatio: number; sampleSize: number }
+> = {
+  ultra: { particles: 150_000, gasLayers: 2, bloom: true, pixelRatio: 2, sampleSize: 1024 },
+  high: { particles: 50_000, gasLayers: 2, bloom: true, pixelRatio: 1.5, sampleSize: 512 },
+  low: { particles: 10_000, gasLayers: 1, bloom: false, pixelRatio: 1.5, sampleSize: 512 },
 }
 
 /** How many particles each quality tier gets. */
 export const PARTICLE_COUNT: Record<QualityTier, number> = {
+  ultra: QUALITY.ultra.particles,
   high: QUALITY.high.particles,
   low: QUALITY.low.particles,
 }
@@ -47,13 +62,25 @@ export const SHAPE_INDEX: Record<ShapeName, number> = {
  * The star field (Skills) has no picture of its own: it borrows the stardust
  * gas, faint and enlarged, and its particles are spread out procedurally.
  */
-export const STAGES: Record<ShapeName, { scene: LookSceneId; height: number; gas: number; gasScale: number }> = {
+export const STAGES: Record<
+  ShapeName,
+  { scene: LookSceneId; height: number; gas: number; gasScale: number; focus?: [number, number] }
+> = {
   name: { scene: 'stardust', height: 11, gas: 0.8, gasScale: 1 },
   nebulaA: { scene: 'nebulaA', height: 9.5, gas: 1, gasScale: 1 },
   nebulaB: { scene: 'nebulaB', height: 7, gas: 1, gasScale: 1 },
   field: { scene: 'stardust', height: 11, gas: 0.12, gasScale: 1.9 },
   galaxy: { scene: 'galaxy', height: 15, gas: 1, gasScale: 1 },
-  nova: { scene: 'supernova', height: 11, gas: 1, gasScale: 1 },
+  // The supernova is centred on the calm blue cavity inside its shell (57.5%
+  // across, 40.6% down the image), where the contact links sit.
+  nova: { scene: 'supernova', height: 11, gas: 1, gasScale: 1, focus: [0.575, 0.406] },
+}
+
+/** Where a stage's picture sits, so that its `focus` point (if any) is at the centre of the world. */
+export function stageOffset(shape: ShapeName, aspect: number): [number, number] {
+  const { focus, height } = STAGES[shape]
+  if (!focus) return [0, 0]
+  return [(0.5 - focus[0]) * height * aspect, (focus[1] - 0.5) * height]
 }
 
 export const CAMERA = {

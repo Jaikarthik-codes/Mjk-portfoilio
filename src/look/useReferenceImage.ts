@@ -6,12 +6,12 @@ import { LOOK_SCENES, type LookSceneId } from './scenes'
 export interface ReferenceImage {
   /** The image as a GPU texture, for the gas layer. */
   texture: THREE.Texture
-  /** The same image, shrunk to 512 px and read back, for placing particles. */
+  /** The same image, shrunk (to 512 px, or 1024 on ultra) and read back, for placing particles. */
   pixels: ImagePixels
 }
 
 /** Loads an image and prepares it two ways: as a texture (the gas) and as pixels (where the particles go). */
-export async function loadReferenceImage(url: string): Promise<ReferenceImage> {
+export async function loadReferenceImage(url: string, sampleSize = 512): Promise<ReferenceImage> {
   const image = new Image()
   image.src = url
   await image.decode()
@@ -23,9 +23,9 @@ export async function loadReferenceImage(url: string): Promise<ReferenceImage> {
   texture.generateMipmaps = true
   texture.minFilter = THREE.LinearMipmapLinearFilter
   texture.magFilter = THREE.LinearFilter
-  texture.anisotropy = 4
+  texture.anisotropy = 8
   texture.needsUpdate = true
-  return { texture, pixels: readPixels(image, 512) }
+  return { texture, pixels: readPixels(image, sampleSize) }
 }
 
 /** One scene's reference image (the look lab). Returns null while loading. */
@@ -55,26 +55,31 @@ export function useReferenceImage(url: string): ReferenceImage | null {
 
 export type ReferenceImages = Record<LookSceneId, ReferenceImage>
 
-/** Every scene's image, loaded once for the whole visit (the site needs them all up front). */
-let allReferences: Promise<ReferenceImages> | null = null
+/** Every scene's image, loaded once for the whole visit (the site needs them all up front), per sample size. */
+const allReferences = new Map<number, Promise<ReferenceImages>>()
 
-function loadAll(): Promise<ReferenceImages> {
-  allReferences ??= Promise.all(
-    LOOK_SCENES.map(async (scene) => [scene.id, await loadReferenceImage(scene.texture)] as const),
-  ).then((entries) => Object.fromEntries(entries) as ReferenceImages)
-  return allReferences
+function loadAll(sampleSize: number): Promise<ReferenceImages> {
+  let loading = allReferences.get(sampleSize)
+  if (!loading) {
+    loading = Promise.all(
+      LOOK_SCENES.map(async (scene) => [scene.id, await loadReferenceImage(scene.texture, sampleSize)] as const),
+    ).then((entries) => Object.fromEntries(entries) as ReferenceImages)
+    allReferences.set(sampleSize, loading)
+  }
+  return loading
 }
 
 /**
- * All five reference images, for the main site. Returns null while they load
- * (about 1.4 MB in all), or if one of them could not be loaded.
+ * All five reference images, for the main site, read at `sampleSize` px for
+ * placing particles. Returns null while they load (about 1.4 MB in all), or
+ * if one of them could not be loaded.
  */
-export function useReferenceImages(): ReferenceImages | null {
+export function useReferenceImages(sampleSize = 512): ReferenceImages | null {
   const [result, setResult] = useState<ReferenceImages | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    loadAll()
+    loadAll(sampleSize)
       .then((references) => {
         if (!cancelled) setResult(references)
       })
@@ -82,7 +87,7 @@ export function useReferenceImages(): ReferenceImages | null {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [sampleSize])
 
   return result
 }

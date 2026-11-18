@@ -1,15 +1,17 @@
 import { Canvas } from '@react-three/fiber'
 import { IntroSequence } from '../journey/useJourney'
 import type { ReferenceImages } from '../look/useReferenceImage'
+import { useStore } from '../store/useStore'
 import { CameraRig } from './CameraRig'
-import { CAMERA } from './config'
+import { CAMERA, QUALITY } from './config'
 import { Effects } from './Effects'
 import { FrameTicker } from './frame'
 import { GasStack } from './GasStack'
+import { SupernovaFlash } from './nova/SupernovaFlash'
 import { ParticleSystem } from './ParticleSystem'
 import { PointerTracker } from './pointer'
 import { StarSystems } from './projects/StarSystems'
-import { SkillStars } from './skills/SkillStars'
+import { Constellations } from './skills/Constellations'
 import { WarpStreaks } from './warp/WarpStreaks'
 
 /**
@@ -25,11 +27,13 @@ import { WarpStreaks } from './warp/WarpStreaks'
  * `flat` tells three.js not to tone map a second time.
  */
 export function Scene({ references }: { references: ReferenceImages }) {
+  const quality = useStore((state) => state.quality)
   return (
     <Canvas
       flat
-      // Cap the pixel ratio: high-density screens would otherwise shade several times the pixels for little visible gain.
-      dpr={[1, 1.5]}
+      // Cap the pixel ratio: high-density screens would otherwise shade several
+      // times the pixels for little visible gain (2 on ultra, 1.5 otherwise).
+      dpr={[1, QUALITY[quality].pixelRatio]}
       camera={{ fov: CAMERA.fov, near: CAMERA.near, far: CAMERA.far, position: [0, 0, 12] }}
       // Antialiasing only smooths triangle edges; soft round points do not need it.
       gl={{ antialias: false, powerPreference: 'high-performance' }}
@@ -41,9 +45,10 @@ export function Scene({ references }: { references: ReferenceImages }) {
 
       <GasStack references={references} />
       <ParticleSystem references={references} />
-      <SkillStars />
+      <Constellations />
       <StarSystems />
       <WarpStreaks />
+      <SupernovaFlash />
 
       <Effects />
       <IntroSequence />

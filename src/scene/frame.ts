@@ -61,7 +61,8 @@ export function FrameTicker() {
       smooth.x = THREE.MathUtils.damp(smooth.x, pointer.x, 9, step)
       smooth.y = THREE.MathUtils.damp(smooth.y, pointer.y, 9, step)
     }
-    const target = pointer.active ? 1 : 0
+    // (No cursor push with reduced motion.)
+    const target = pointer.active && !useStore.getState().calm ? 1 : 0
     frameUniforms.uPointerStrength.value =
       THREE.MathUtils.damp(strength, target, 4, step) * MOTION.pointerStrength
   }, -2)

@@ -2,8 +2,10 @@ import { content } from './data/content'
 import { useFontReady } from './lib/fonts'
 import { useReducedMotionSync } from './lib/motion'
 import { useReferenceImages } from './look/useReferenceImage'
-import { TEXT_SHAPE } from './scene/config'
+import { QUALITY, TEXT_SHAPE } from './scene/config'
 import { Scene } from './scene/Scene'
+import { useStore } from './store/useStore'
+import { ConstellationTitles } from './ui/ConstellationTitles'
 import { DebugHud } from './ui/DebugHud'
 import { Overlay } from './ui/Overlay'
 import { ProjectPanel } from './ui/ProjectPanel'
@@ -18,7 +20,8 @@ export default function App() {
   // The particle name is drawn with this font, so the scene waits for it.
   const fontReady = useFontReady(NAME_FONT, content.name.toUpperCase())
   // … and for the five reference images the gas and particles are made from.
-  const references = useReferenceImages()
+  const quality = useStore((state) => state.quality)
+  const references = useReferenceImages(QUALITY[quality].sampleSize)
   useReducedMotionSync()
 
   return (
@@ -30,6 +33,7 @@ export default function App() {
         {fontReady && references && <Scene references={references} />}
       </div>
 
+      <ConstellationTitles />
       <SectionNav />
       {/* The real content. Scrolling through it drives the scene. */}
       <Overlay />

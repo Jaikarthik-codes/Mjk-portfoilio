@@ -4,9 +4,14 @@ An interactive 3D portfolio. As you scroll, the sky changes from one deep-space
 picture to the next — stardust around a name, two nebulae, a calm star field,
 a spiral galaxy, a supernova. Each picture has two layers: its glowing gas (the
 reference image itself) and tens of thousands of particles sampled from it,
-which fly from one picture to the next entirely in shaders. Each skill is a
-star you can point at; each project is a star system in the galaxy that you
-can warp to.
+which fly from one picture to the next entirely in shaders. Each skill group
+is a real constellation (Orion, Ursa Major, Cassiopeia, …) with its skills on
+the brightest stars; each project is a star system in the galaxy that you can
+warp to. The galaxy ends in a supernova, with the contact links at its heart.
+
+Two more pages: **`/simple/`** is the whole portfolio as plain HTML (no 3D),
+linked from the navigation with the resume download; **`/lab/`** is the look
+test bench (below).
 
 ## Run it
 
@@ -19,9 +24,12 @@ npm run preview  # serve the production build
 
 Add `?debug` to the address (e.g. `http://localhost:5173/?debug`) for a
 developer panel: frame rate, live journey values, a slider that scrubs the
-whole page, and a particle-count toggle. It also exposes `stardust` in the
+whole page, and a quality toggle (150k / 50k / 10k particles). It also exposes `stardust` in the
 browser console — `stardust.gsap.globalTimeline.timeScale(0.2)` plays every
 animation, warps included, at a fifth of the speed.
+
+Add `?quality=ultra` (or `high`, `low`) to choose the quality tier yourself;
+otherwise it is detected (see **Quality** below).
 
 Deploys to Vercel as-is: import the repo and accept the detected Vite preset
 (build `npm run build`, output `dist`).
@@ -37,14 +45,20 @@ For tuning: `?ge=1.2` / `?pe=0.8` scale gas / particle exposure, `?gas=0`,
 
 Reference images live in `public/textures/` as WebP (≤ 2048 px); the
 full-size originals are in `refs/originals/` and are not deployed. Sources
-and licences: [`CREDITS.md`](CREDITS.md).
+and licences: [`CREDITS.md`](CREDITS.md). The constellation figures are
+plates from Sidney Hall's *Urania's Mirror* (1824, public domain) in
+`public/atlas/`; how they were made and lined up with the stars is in
+`scripts/atlas/`.
 
 ## Edit your content
 
 All text, skills, projects, links and section headings live in
 **`src/data/content.ts`**. Change `name` there and the particles spell the new
-name; change the skills and the constellations redraw themselves; add a project
-and a new star system appears in the galaxy, with one planet per technology.
+name; change the skills and the constellations redraw themselves (each group
+gets the next real constellation with enough stars, up to six groups); add a
+project and a new star system appears on the galaxy's arms, with one planet per
+technology. Each project can have a live link, source, API docs and two "what I
+built" lines. Replace **`public/resume.pdf`** (a placeholder) with your resume.
 
 ## Where things are
 
@@ -83,7 +97,12 @@ src/
     galaxyFrame.ts             the galaxy's spin and orientation, mirrored from the shader
     picking.ts                 hover and tap tests, done on screen
     instanced.ts, materials.ts thin lines and glowing sprites, many per draw call
-    skills/SkillStars.tsx      skill stars + constellation lines, with hover labels
+    skills/
+      catalogue.ts             real constellations: star positions, magnitudes, stick figures
+      atlas.ts                 where each star-atlas figure sits behind its stars
+      Constellations.tsx       stars, lines (drawn in), atlas figures, labels; drawn after tone mapping
+    nova/SupernovaFlash.tsx    the supernova's flash and shock ring
+    GasStack.tsx, gasState.ts  (see above)
     projects/
       systemLayout.ts          where each project's star system and planets go
       StarSystems.tsx          stars, orbits and planets; hover and click to warp
@@ -93,7 +112,7 @@ src/
       particles.vert.glsl      the morph engine (start reading here)
       particles.frag.glsl      draws each particle: Gaussian core, and spikes for hero stars
       pointer.glsl             cursor gravity, shared by several shaders
-      lines.*, sprite.vert, star.frag   constellation lines, orbits and stars
+      lines.*, sprite.vert, star.frag   orbits and star-system stars
       planet.*                 lit planets with cloud bands and atmosphere
       streak.*, warp.frag      hyperspace streaks and the warp's chromatic aberration
       noise.glsl               smooth-noise helpers
@@ -144,9 +163,21 @@ The scene is drawn into a high-range image, then `Effects.tsx` blooms the
 brightest light, tone maps it (ACES filmic, so bright gas compresses instead of
 clipping to white), and lays space black (#04050A) underneath.
 
-**Quality.** Capable devices get 50,000 particles, two gas planes per picture
-and bloom; phones and low-power devices get 10,000 particles, one gas plane and
-no bloom. The pixel ratio is capped at 1.5 everywhere.
+**Quality.** Three tiers (`QUALITY` in `src/scene/config.ts`):
+*ultra* — detected from a dedicated graphics card (NVIDIA, AMD Radeon RX/Pro,
+Intel Arc, Apple Pro/Max/Ultra chips) — gets 150,000 particles (the extra ones
+all fine dust), pictures read at 1024 px, a pixel ratio up to 2 and full bloom;
+*high* gets 50,000 particles, two gas planes and bloom at a pixel ratio up to
+1.5; phones and low-power devices get *low*: 10,000 particles, one gas plane and
+no bloom. The shapes are built in the background (one at a time) and the Big
+Bang starts when they are ready. On a laptop with two graphics chips, let the
+browser use the dedicated one (Windows: Settings → Display → Graphics).
+
+**The constellations** are drawn in a second pass, straight to the screen
+after tone mapping and bloom, so their colours are exact: crisp white discs,
+1 px lines in #7FA6D9 at 50%, atlas figures at 12%. Lines draw in one after
+another when the section arrives; a skill's name appears when you point at its
+star, focus or hover it in the list, or tap it.
 
 To tune the feel, change `STAGES`, `MOTION` and `SHAPE_LOOK` in
 `src/scene/config.ts`, the per-image looks in `src/look/scenes.ts` (try them in
@@ -162,9 +193,14 @@ and the flight times at the top of `src/journey/warp.ts`.
 - Projects open from keyboard-focusable buttons. The panel is a native modal
   dialog: focus moves into it, Tab stays inside, Escape closes it, and focus
   returns to where it was. ← and → step between systems.
+- Each skill in the Skills list is a button: focusing it with the keyboard
+  lights its star and shows its name in the sky.
+- `/simple/` carries everything as plain HTML, linked from the navigation on
+  every screen.
 - With *reduced motion* switched on, the pictures are still: no drift, spin or
-  twinkle, the Big Bang is skipped, each picture dissolves into the next
-  instead of flying, the camera cuts rather than glides, and warps cut
+  twinkle, no cursor push, the Big Bang and the supernova flash are skipped,
+  each picture dissolves into the next instead of flying, the constellations
+  appear fully drawn, the camera cuts rather than glides, and warps cut
   straight to the system with no streaks or colour fringing.
 
 ## Build phases
@@ -175,6 +211,7 @@ and the flight times at the top of `src/journey/warp.ts`.
 - Visual rework:
   - [x] **A. Look lab** — each picture's two-layer look next to its reference (`/lab`)
   - [x] **B. Looks wired into the scroll** — sampled particle shapes, gas crossfades, HDR + ACES + bloom, space black, tiers, reduced motion
-  - [ ] C. New constellations and the supernova contact section
-- [ ] 4. Explore mode (optional)
-- [ ] 5. Loader, sound (optional), mobile fallback, final polish
+  - [x] **C. Constellations and the supernova contact section** — real constellations with atlas figures, draw-in, labels on hover/focus/tap; collapse, flash and shock ring; simple view, resume, credits; ultra tier
+- [ ] Finish 3 in the new look (star systems, panels)
+- [ ] 4. Explore mode (optional — hook in `src/features/explore.ts`)
+- [ ] 5. Loader, sound (optional — hook in `src/features/audio.ts`), final polish

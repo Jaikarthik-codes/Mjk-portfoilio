@@ -7,7 +7,8 @@ import { LOOK_PALETTE, SPACE_BLACK } from '../look/palette'
 import { LOOK_SCENES, type LookSceneId } from '../look/scenes'
 
 /** Particles and gas planes per quality tier (phones get the lighter one). */
-const TIERS: Record<QualityTier, { particles: number; gasLayers: 1 | 2; label: string }> = {
+type LabTier = Exclude<QualityTier, 'ultra'>
+const TIERS: Record<LabTier, { particles: number; gasLayers: 1 | 2; label: string }> = {
   high: { particles: 50_000, gasLayers: 2, label: '50k · 2 gas' },
   low: { particles: 10_000, gasLayers: 1, label: '10k · 1 gas' },
 }
@@ -33,7 +34,11 @@ function sceneFromHash(): LookSceneId {
  */
 export function LabApp() {
   const [sceneId, setSceneId] = useState<LookSceneId>(sceneFromHash)
-  const [tier, setTier] = useState<QualityTier>(() => (params.get('tier') as QualityTier) ?? detectQualityTier())
+  // (The lab compares the 50k and 10k looks; ultra devices get the 50k one here.)
+  const [tier, setTier] = useState<LabTier>(() => {
+    const asked = params.get('tier') ?? detectQualityTier()
+    return asked === 'low' ? 'low' : 'high'
+  })
   const [showGas, setShowGas] = useState(() => startsOn('gas'))
   const [showParticles, setShowParticles] = useState(() => startsOn('particles'))
   const [bloom, setBloom] = useState(() => startsOn('bloom'))
@@ -146,7 +151,7 @@ export function LabApp() {
         <Toggle on={!paused} onChange={(on) => setPaused(!on)}>
           Motion
         </Toggle>
-        {(Object.keys(TIERS) as QualityTier[]).map((t) => (
+        {(Object.keys(TIERS) as LabTier[]).map((t) => (
           <Toggle key={t} on={tier === t} onChange={() => setTier(t)}>
             {TIERS[t].label}
           </Toggle>

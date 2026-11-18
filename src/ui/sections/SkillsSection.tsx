@@ -2,19 +2,11 @@ import { content } from '../../data/content'
 import { useStore } from '../../store/useStore'
 import { SectionHeading, SectionShell } from './SectionShell'
 
-/** One colour per constellation, in the same order as GROUP_COLOURS in scene/skills/SkillStars.tsx. */
-const GROUP_COLOURS = [
-  'text-ice',
-  'text-gold',
-  'text-sea',
-  'text-rose',
-  'text-star',
-]
-
 /**
  * Section 3 — the constellations. The skills are listed as text beneath them;
- * pointing at a skill here lights up its star, and hovering a star highlights
- * its skill here.
+ * pointing at a skill here (or focusing it with the keyboard, or tapping it)
+ * lights up its star and shows its name in the sky, and pointing at a star
+ * highlights its skill here.
  */
 export function SkillsSection() {
   const lit = useStore((state) => state.litSkill)
@@ -36,7 +28,7 @@ export function SkillsSection() {
           {content.skills.map((group, groupIndex) => (
             <li key={group.group}>
               <h3
-                className={`font-mono text-[11px] uppercase tracking-[0.3em] ${GROUP_COLOURS[groupIndex % GROUP_COLOURS.length]}`}
+                className="font-mono text-[11px] uppercase tracking-[0.3em] text-ice"
               >
                 {group.group}
               </h3>
@@ -46,15 +38,19 @@ export function SkillsSection() {
                   const active = lit === key
                   return (
                     <li key={item}>
-                      <span
+                      <button
+                        type="button"
                         onPointerEnter={() => setListSkill(key)}
                         onPointerLeave={() => setListSkill(null)}
-                        className={`interactive cursor-default transition-[color,text-shadow] duration-300 ${
+                        onFocus={() => setListSkill(key)}
+                        onBlur={() => setListSkill(null)}
+                        onClick={() => setListSkill(key)}
+                        className={`interactive cursor-default rounded-sm transition-[color,text-shadow] duration-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-ice/70 ${
                           active ? 'text-white [text-shadow:0_0_14px_rgb(255_255_255/0.7)]' : 'text-white/75'
                         }`}
                       >
                         {item}
-                      </span>
+                      </button>
                       {itemIndex < group.items.length - 1 && (
                         <span className="ml-2 text-white/30" aria-hidden="true">
                           ·

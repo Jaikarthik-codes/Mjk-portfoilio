@@ -1,4 +1,5 @@
 import { content } from '../../data/content'
+import { IMAGE_CREDITS } from '../../data/credits'
 import { SectionHeading, SectionShell } from './SectionShell'
 
 /** Strips "https://" and "www." so a link reads as "github.com/you". */
@@ -43,6 +44,16 @@ export function ContactSection() {
           ))}
         </ul>
       </div>
+
+      {/* Image credits: one line along the bottom of the last screen. */}
+      <footer className="absolute inset-x-0 bottom-[max(1rem,2.5svh)] px-6 text-center font-mono text-[9px] leading-relaxed tracking-[0.06em] text-white/40">
+        <p>
+          Images: {IMAGE_CREDITS.map((credit) => credit.credit).join(' · ')}.{' '}
+          <a href="/simple/#credits" className="interactive underline decoration-white/25 underline-offset-2 hover:text-white">
+            Full credits
+          </a>
+        </p>
+      </footer>
     </SectionShell>
   )
 }

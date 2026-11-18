@@ -14,8 +14,9 @@ function goToSection(event: MouseEvent<HTMLAnchorElement>, id: SectionId) {
 }
 
 /**
- * The floating navigation: the site name in the corner and a column of dots,
- * one per section, with the current section's name beside its dot.
+ * The floating navigation: the site name in the corner, links to the simple
+ * view and the resume in the other, and a column of dots, one per section,
+ * with the current section's name beside its dot.
  */
 export function SectionNav() {
   const current = useStore((state) => state.currentSection)
@@ -32,6 +33,25 @@ export function SectionNav() {
       >
         Stardust Origin
       </a>
+
+      {/* Always within reach: the plain version of the site, and the resume. */}
+      <div className={`${hide} fixed right-4 top-4 z-20 flex items-center gap-2 sm:right-6 sm:top-6 sm:gap-3`}>
+        <a
+          href="/simple/"
+          className="rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-white/70 transition-colors hover:text-white focus-visible:outline focus-visible:outline-1 focus-visible:outline-ice/70"
+        >
+          Simple view
+        </a>
+        <a
+          href={content.resume.url}
+          download={content.resume.fileName}
+          className="flex items-center gap-1.5 rounded-full border border-white/25 bg-white/5 px-3.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-white backdrop-blur-sm transition-colors hover:border-white/60 hover:bg-white/12 focus-visible:outline focus-visible:outline-1 focus-visible:outline-ice/70"
+        >
+          <span className="max-sm:hidden">Download resume</span>
+          <span className="sm:hidden">Resume</span>
+          <span aria-hidden="true">↓</span>
+        </a>
+      </div>
 
       <nav aria-label="Sections" className={`${hide} fixed right-2 top-1/2 z-20 -translate-y-1/2 sm:right-5`}>
         <ol className="flex flex-col items-end">

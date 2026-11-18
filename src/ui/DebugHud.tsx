@@ -2,11 +2,10 @@ import gsap from 'gsap'
 import { useEffect, useState } from 'react'
 import { rig } from '../journey/rig'
 import { JOURNEY_END } from '../journey/sections'
-import type { QualityTier } from '../lib/device'
+import { QUALITY_TIERS } from '../lib/device'
 import { PARTICLE_COUNT } from '../scene/config'
 import { useStore } from '../store/useStore'
 
-const QUALITY_TIERS: QualityTier[] = ['high', 'low']
 
 /**
  * A small developer panel. Add `?debug` to the page address to show it.

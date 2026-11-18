@@ -10,7 +10,7 @@ import { frameUniforms } from '../frame'
 import streakFragment from '../shaders/streak.frag.glsl?raw'
 import streakVertex from '../shaders/streak.vert.glsl?raw'
 
-const STREAKS = { high: 420, low: 160 }
+const STREAKS = { ultra: 700, high: 420, low: 160 }
 /** Streak-space units flown per second at full warp, and the longest streak. */
 const TOP_SPEED = 46
 const MAX_LENGTH = 9

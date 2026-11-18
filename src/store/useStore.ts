@@ -26,6 +26,10 @@ interface StardustState {
   introDone: boolean
   setIntroDone: (done: boolean) => void
 
+  /** True once the particles' shapes have been built (the Big Bang waits for them). */
+  particlesReady: boolean
+  setParticlesReady: (ready: boolean) => void
+
   /** Decides the particle count and which effects run. */
   quality: QualityTier
   setQuality: (quality: QualityTier) => void
@@ -78,6 +82,9 @@ export const useStore = create<StardustState>((set) => ({
 
   introDone: false,
   setIntroDone: (introDone) => set({ introDone }),
+
+  particlesReady: false,
+  setParticlesReady: (particlesReady) => set({ particlesReady }),
 
   quality: detectQualityTier(),
   setQuality: (quality) => set({ quality }),

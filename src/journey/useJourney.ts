@@ -109,8 +109,12 @@ function syncCurrentSection() {
  */
 export function useIntro() {
   const setIntroDone = useStore((state) => state.setIntroDone)
+  const ready = useStore((state) => state.particlesReady)
 
   useEffect(() => {
+    // Nothing to show until the particles exist.
+    if (!ready) return
+
     // Skip the show and go straight to the finished state if the visitor
     // arrived part-way down the page (a reload, or a link to #projects), or
     // has asked their system for reduced motion.
@@ -135,7 +139,7 @@ export function useIntro() {
       tween.kill()
       reveal.kill()
     }
-  }, [setIntroDone])
+  }, [setIntroDone, ready])
 }
 
 /** Tiny component wrapper so the intro can be mounted as a child of the canvas. */

@@ -9,7 +9,7 @@ import {
 } from '../../look/sampleImage'
 import { LOOK_SCENES, type ParticleLook } from '../../look/scenes'
 import type { ReferenceImages } from '../../look/useReferenceImage'
-import { fillDistance, NAME_SHAPE, SHAPES, STAGES, type ShapeName } from '../config'
+import { fillDistance, NAME_SHAPE, SHAPES, stageOffset, STAGES, type ShapeName } from '../config'
 import type { NameLayout } from '../nameLayout'
 import type { ConstellationField } from './constellationLayout'
 import { generateField } from './field'
@@ -50,29 +50,41 @@ export interface ParticleShapes {
  * Each shape gets its own seeded random stream, so tweaking one shape never
  * reshuffles the others.
  */
-export function buildShapes(count: number, options: BuildShapesOptions): ParticleShapes {
+export async function buildShapes(count: number, options: BuildShapesOptions): Promise<ParticleShapes> {
   const layout = createLayout(count)
   const traits = createTraits(layout, createRng(7))
   const { references } = options
 
-  const raw: Record<ShapeName, SampledShape> = {
-    name: buildName(layout, options),
-    nebulaA: sampleStage('nebulaA', layout, references),
-    nebulaB: sampleStage('nebulaB', layout, references),
-    field: generateField(layout, options.constellations, options.fieldDistance, createRng(66)),
-    galaxy: layFlat(sampleStage('galaxy', layout, references)),
-    nova: sampleStage('nova', layout, references),
+  // One shape at a time, handing the page back in between: with 150,000
+  // particles the whole job takes a second or two, and the page should stay
+  // responsive meanwhile.
+  const raw = {} as Record<ShapeName, SampledShape>
+  const makers: Record<ShapeName, () => SampledShape> = {
+    name: () => buildName(layout, options),
+    nebulaA: () => sampleStage('nebulaA', layout, references),
+    nebulaB: () => sampleStage('nebulaB', layout, references),
+    field: () => generateField(layout, options.constellations, options.fieldDistance, createRng(66)),
+    galaxy: () => layFlat(sampleStage('galaxy', layout, references)),
+    nova: () => sampleStage('nova', layout, references),
+  }
+  for (const shape of SHAPES) {
+    raw[shape] = makers[shape]()
+    await breathe()
   }
 
   // Give every shape the same left-to-right ordering (see sortWithinClasses for why).
   // The number is how much each ordering is blurred, in world units.
   const jitter: Record<ShapeName, number> = { name: 0.5, nebulaA: 1.4, nebulaB: 1.4, field: 1.6, galaxy: 1.2, nova: 1.5 }
   const sortRng = createRng(44)
-  const shapes = Object.fromEntries(
-    SHAPES.map((shape) => [shape, sortWithinClasses(raw[shape], layout, sortRng, jitter[shape])]),
-  ) as Record<ShapeName, SampledShape>
+  const shapes = {} as Record<ShapeName, SampledShape>
+  for (const shape of SHAPES) shapes[shape] = sortWithinClasses(raw[shape], layout, sortRng, jitter[shape])
 
   return { layout, traits, shapes }
+}
+
+/** Lets the browser draw and handle input before carrying on. */
+function breathe() {
+  return new Promise<void>((resolve) => setTimeout(resolve, 0))
 }
 
 /**
@@ -89,7 +101,7 @@ function sampleStage(
   references: ReferenceImages,
   override: Partial<ParticleLook> = {},
 ): SampledShape {
-  const key = `${shape}:${layout.count}`
+  const key = `${shape}:${layout.count}:${references[STAGES[shape].scene].pixels.width}`
   const cached = sampled.get(key)
   if (cached) return cached
 
@@ -105,6 +117,12 @@ function sampleStage(
   })
   // Bake the image's particle exposure (as tuned in the look lab) into the colours.
   for (let i = 0; i < result.colors.length; i++) result.colors[i] *= look.exposure
+  // Move the picture so its focus point (if it has one) is at the centre.
+  const [dx, dy] = stageOffset(shape, scene.aspect)
+  for (let i = 0; i < layout.count; i++) {
+    result.positions[i * 3] += dx
+    result.positions[i * 3 + 1] += dy
+  }
 
   sampled.set(key, result)
   return result
